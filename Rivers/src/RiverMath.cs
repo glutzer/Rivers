@@ -1,0 +1,45 @@
+﻿using System;
+using System.Runtime.CompilerServices;
+using Vintagestory.API.MathTools;
+
+public class RiverMath
+{
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static float GetProjection(Vec2d point, Vec2d start, Vec2d end)
+    {
+        double dx = end.X - start.X;
+        double dy = end.Y - start.Y;
+        double v = (point.X - start.X) * dx + (point.Y - start.Y) * dy;
+        v /= dx * dx + dy * dy;
+        return (float)(v < 0 ? 0 : v > 1 ? 1 : v);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double DistanceToLine(Vec2d point, Vec2d start, Vec2d end)
+    {
+        if ((start.X - end.X) * (point.X - end.X) + (start.Y - end.Y) * (point.Y - end.Y) <= 0)
+        {
+            return Math.Sqrt((point.X - end.X) * (point.X - end.X) + (point.Y - end.Y) * (point.Y - end.Y));
+        }
+
+        if ((end.X - start.X) * (point.X - start.X) + (end.Y - start.Y) * (point.Y - start.Y) <= 0)
+        {
+            return Math.Sqrt((point.X - start.X) * (point.X - start.X) + (point.Y - start.Y) * (point.Y - start.Y));
+        }
+
+        return Math.Abs((end.Y - start.Y) * point.X - (end.X - start.X) * point.Y + end.X * start.Y - end.Y * start.X) / Math.Sqrt((start.Y - end.Y) * (start.Y - end.Y) + (start.X - end.X) * (start.X - end.X));
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double InverseLerp(double value, double min, double max)
+    {
+        if (Math.Abs(max - min) < double.Epsilon)
+        {
+            return 0f;
+        }
+        else
+        {
+            return (value - min) / (max - min);
+        }
+    }
+}
