@@ -1,0 +1,13 @@
+{
+    "type": "code",
+    "modid": "rivers",
+    "name": "Rivers",
+    "authors": [
+        "sneezerstein"
+    ],
+    "description": "Standalone version of rivers and waterwheels.",
+    "version": "1.0.0",
+    "dependencies": {
+        "game": ""
+    }
+}
