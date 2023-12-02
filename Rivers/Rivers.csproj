@@ -53,6 +53,10 @@
   <Content Include="assets\**">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
   </Content>
+  <None Remove="assets\waterwheels\recipes\grid\waterwheels.json" />
+  <None Remove="assets\waterwheels\shapes\block\wood\waterwheel-base.json" />
+  <None Remove="assets\waterwheels\shapes\block\wood\waterwheellarge.json" />
+  <None Remove="assets\waterwheels\shapes\block\wood\waterwheelsmall.json" />
   <Content Include="modinfo.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
   </Content>

@@ -2,7 +2,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Data.Common;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -26,14 +25,14 @@ namespace Vintagestory.ServerMods
         public const double terrainDistortionThreshold = 40.0;
         public const double geoDistortionMultiplier = 10.0;
         public const double geoDistortionThreshold = 10.0;
-        public  const double maxDistortionAmount = (55 + 40 + 30 + 10) * SimplexNoiseOctave.MAX_VALUE_2D_WARP;
+        public const double maxDistortionAmount = (55 + 40 + 30 + 10) * SimplexNoiseOctave.MAX_VALUE_2D_WARP;
 
         public RiverGenerator riverGenerator;
 
         public int maxThreads;
 
         public LandformsWorldProperty landforms;
-        public Dictionary<int, LerpedWeightedIndex2DMap> LandformMapByRegion = new Dictionary<int, LerpedWeightedIndex2DMap>(10);
+        public Dictionary<int, LerpedWeightedIndex2DMap> LandformMapByRegion = new(10);
         public int regionMapSize;
         public float noiseScale;
         public int terrainGenOctaves = 9;
@@ -508,19 +507,25 @@ namespace Vintagestory.ServerMods
                         noiseSign = columnNoise.NoiseSign(posY, noiseSign);
                     }
 
+                    columnBlockSolidities[posY] = noiseSign > 0;
+                    layerFullyEmpty[posY] = false;
+                    layerFullySolid[posY] = false;
+
+                    //This massively breaks things right now
+
+                    /*
                     if (noiseSign > 0) //Solid
                     {
                         columnBlockSolidities[posY] = true;
                         layerFullyEmpty[posY] = false; //Thread safe even when this is parallel
-
-                        //Don't fully set this solid for now
-                        layerFullySolid[posY] = false;
                     }
                     else
                     {
                         columnBlockSolidities[posY] = false;
                         layerFullySolid[posY] = false; //Thread safe even when this is parallel
                     }
+
+                    */
                 }
             });
 
@@ -551,6 +556,10 @@ namespace Vintagestory.ServerMods
             if (yTop < seaLevel) yTop = seaLevel;
             yTop++; //Add back one because this is going to be the loop until limit
 
+            float[] flowVectorsX = new float[32 * 32];
+            float[] flowVectorsZ = new float[32 * 32];
+            bool riverBank = false;
+
             //Then for the rest place blocks column by column (from yBase to yTop only; outside that range layers were already placed below, or are fully air above)
             for (int localZ = 0; localZ < chunksize; localZ++)
             {
@@ -563,8 +572,15 @@ namespace Vintagestory.ServerMods
 
                     //2. Get data needed for the entire column here
                     RiverSample riverSample = riverGenerator.SampleRiver(validSegments, localStart.X + localX, localStart.Y + localZ);
-                    int bankFactorBlocks = (int)(riverSample.bankFactor * aboveSeaLevel * 4);
-                    int baseline = baseSeaLevel + 6;
+                    int bankFactorBlocks = (int)(riverSample.bankFactor * aboveSeaLevel);
+                    int baseline = baseSeaLevel + 3;
+
+                    if (riverSample.flowVectorX > -100)
+                    {
+                        flowVectorsX[localZ * 32 + localX] = riverSample.flowVectorX;
+                        flowVectorsZ[localZ * 32 + localX] = riverSample.flowVectorZ;
+                        riverBank = true;
+                    }
 
                     if (yBase < seaLevel && waterId != GlobalConfig.saltWaterBlockId) //Finding the surface water / ice id, relevant only for fresh water and only if there is a non-solid block in the column below sea-level
                     {
@@ -614,6 +630,12 @@ namespace Vintagestory.ServerMods
 
                     mapIndex++;
                 }
+            }
+
+            if (riverBank)
+            {
+                chunks[0].SetModdata<float[]>("flowVectorsX", flowVectorsX);
+                chunks[0].SetModdata<float[]>("flowVectorsZ", flowVectorsZ);
             }
 
             ushort yMax = 0;
@@ -740,7 +762,7 @@ namespace Vintagestory.ServerMods
         public struct VectorXZ
         {
             public double X, Z;
-            public static VectorXZ operator *(VectorXZ a, double b) => new VectorXZ { X = a.X * b, Z = a.Z * b };
+            public static VectorXZ operator *(VectorXZ a, double b) => new() { X = a.X * b, Z = a.Z * b };
         }
     }
 }

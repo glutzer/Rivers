@@ -12,6 +12,13 @@ public class RiversMod : ModSystem
         return 0;
     }
 
+    public override void Start(ICoreAPI api)
+    {
+        api.RegisterBlockClass("BlockWaterWheel", typeof(BlockWaterWheel));
+        api.RegisterBlockEntityClass("BEWaterWheel", typeof(BEWaterWheel));
+        api.RegisterBlockEntityBehaviorClass("BEBehaviorWaterWheel", typeof(BEBehaviorWaterWheel));
+    }
+
     public override void StartPre(ICoreAPI api)
     {
         if (!patched)

@@ -31,6 +31,8 @@ public class TectonicPlate
     public int segmentsInRiver;
     public double segmentOffset;
 
+    public int maxZoneTraversal;
+
     public TectonicPlate(ICoreServerAPI sapi, int plateX, int plateZ)
     {
         this.sapi = sapi;
@@ -47,6 +49,8 @@ public class TectonicPlate
         lakeChance = RiverConfig.Loaded.lakeChance;
         segmentsInRiver = RiverConfig.Loaded.segmentsInRiver;
         segmentOffset = RiverConfig.Loaded.segmentOffset;
+
+        maxZoneTraversal = RiverConfig.Loaded.maxZoneTraversal;
 
         plateSize = zoneSize * zonesInPlate;
         localPlateCenterPosition.X = plateSize / 2;
@@ -92,12 +96,10 @@ public class TectonicPlate
                 int regionX = chunkX / 16;
                 int regionZ = chunkZ / 16;
 
-                //This map system is really stupid. Chunk edge lerping is really low resolution and when you sample it like this it's more computationally expensive than outright getting simple noise.
-                //And on top of that it doesn't even look right. So why the fuck are there a billion maps instead of you just sampling the noise outright with 2 lines of code?
                 GenMaps genMaps = sapi.ModLoader.GetModSystem<GenMaps>();
                 int noiseSizeOcean = genMaps.GetField<int>("noiseSizeOcean");
 
-                IntDataMap2D oceanMap = new IntDataMap2D();
+                IntDataMap2D oceanMap = new();
                 oceanMap.Size = noiseSizeOcean + 2 * oceanPadding;
                 oceanMap.TopLeftPadding = oceanPadding;
                 oceanMap.BottomRightPadding = oceanPadding;
@@ -219,7 +221,7 @@ public class TectonicPlate
                 {
                     List<River> riverList = new();
                     List<TectonicZone> pathedZones = new();
-                    GenerateRiver(width, depth, zone, 30, 2, null, riverList, pathedZones);
+                    GenerateRiver(width, depth, zone, maxZoneTraversal, 3, null, riverList, pathedZones);
 
                     //Invalid number of rivers
                     if (riverList.Count < 3)
@@ -473,7 +475,7 @@ public class TectonicPlate
             //Need sin wave distortion for lakes
             if (rand.NextInt(100) < lakeChance)
             {
-                AddLake(zone, 0, 50, 100);
+                AddLake(zone, 0, 25, 50);
             }
         }
     }

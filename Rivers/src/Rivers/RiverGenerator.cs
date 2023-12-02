@@ -9,14 +9,14 @@ public class RiverGenerator
 
     public Noise riverDistortionX;
     public Noise riverDistortionZ;
-
+    
     public RiverGenerator()
     {
         riverDepth = RiverConfig.Loaded.riverDepth;
         baseDepth = RiverConfig.Loaded.baseDepth;
 
-        riverDistortionX = new Noise(0, 0.005f, 2, 0.4f, 2.6f);
-        riverDistortionZ = new Noise(2, 0.005f, 2, 0.4f, 2.6f);
+        riverDistortionX = new Noise(0, 0.008f, 2, 0.5f);
+        riverDistortionZ = new Noise(2, 0.008f, 2, 0.5f);
     }
 
     public RiverSample SampleRiver(List<RiverSegment> segments, double x, double z)
@@ -115,9 +115,10 @@ public class RiverGenerator
 
                     riverSample.riverDistance = 0;
 
-                    double lerp = 1 - RiverMath.InverseLerp(distance, riverSize, 0);
+                    double lerp = RiverMath.InverseLerp(distance, riverSize, 0);
+                    lerp = Math.Sqrt(1 - Math.Pow(1 - lerp, 2));
 
-                    riverSample.bankFactor = Math.Max(Math.Max(Math.Sqrt(riverSize) * riverDepth, baseDepth) * (1 - lerp * lerp), riverSample.bankFactor); //Deepest bank
+                    riverSample.bankFactor = Math.Max(Math.Max(Math.Sqrt(riverSize) * riverDepth, baseDepth) * lerp, riverSample.bankFactor); //Deepest bank
 
                     continue;
                 }

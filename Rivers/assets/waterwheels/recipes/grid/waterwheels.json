@@ -1,0 +1,112 @@
+﻿[
+  {
+    "ingredientPattern": "SLN,PAP,HWC",
+    "ingredients": {
+      "H": {
+        "type": "item",
+        "code": "game:hammer-*",
+        "isTool": true,
+        "toolDurabilityCost": 100
+      },
+      "A": {
+        "type": "item",
+        "code": "game:woodenaxle-ud"
+      },
+      "C": {
+        "type": "item",
+        "code": "game:chisel-*",
+        "isTool": true,
+        "toolDurabilityCost": 100
+      },
+      "S": {
+        "type": "item",
+        "code": "game:saw-*",
+        "isTool": true,
+        "toolDurabilityCost": 100
+      },
+      "L": {
+        "type": "item",
+        "code": "game:resin",
+        "quantity": 16
+      },
+      "W": {
+        "type": "block",
+        "code": "game:debarkedlog-*-ud",
+        "quantity": 64
+      },
+      "N": {
+        "type": "item",
+        "code": "game:metalnailsandstrips-iron",
+        "name": "material",
+        "quantity": 16
+      },
+      "P": {
+        "type": "item",
+        "code": "game:metalplate-iron",
+        "name": "material",
+        "quantity": 8
+      }
+    },
+    "width": 3,
+    "height": 3,
+    "output": {
+      "type": "block",
+      "code": "waterwheels:waterwheel-large-north"
+    }
+  },
+  {
+    "ingredientPattern": "SLN,PAP,HWC",
+    "ingredients": {
+      "H": {
+        "type": "item",
+        "code": "game:hammer-*",
+        "isTool": true,
+        "toolDurabilityCost": 50
+      },
+      "A": {
+        "type": "item",
+        "code": "game:woodenaxle-ud"
+      },
+      "C": {
+        "type": "item",
+        "code": "game:chisel-*",
+        "isTool": true,
+        "toolDurabilityCost": 50
+      },
+      "S": {
+        "type": "item",
+        "code": "game:saw-*",
+        "isTool": true,
+        "toolDurabilityCost": 50
+      },
+      "L": {
+        "type": "item",
+        "code": "game:resin",
+        "quantity": 8
+      },
+      "W": {
+        "type": "block",
+        "code": "game:debarkedlog-*-ud",
+        "quantity": 32
+      },
+      "N": {
+        "type": "item",
+        "code": "game:metalnailsandstrips-iron",
+        "name": "material",
+        "quantity": 8
+      },
+      "P": {
+        "type": "item",
+        "code": "game:metalplate-iron",
+        "name": "material",
+        "quantity": 4
+      }
+    },
+    "width": 3,
+    "height": 3,
+    "output": {
+      "type": "block",
+      "code": "waterwheels:waterwheel-small-north"
+    }
+  }
+]
