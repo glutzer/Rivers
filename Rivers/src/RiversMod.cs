@@ -6,7 +6,7 @@ public class RiversMod : ModSystem
     public Harmony harmony;
     public static bool patched = false;
     public bool patchedLocal = false;
-    public bool devEnvironment = true;
+    public bool devEnvironment = false;
 
     public override double ExecuteOrder()
     {
