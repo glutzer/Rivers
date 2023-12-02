@@ -13,7 +13,30 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+using Vintagestory.ServerMods;
 using Vintagestory.ServerMods.NoObf;
+using static Vintagestory.ServerMods.GenerateTerra;
+
+public RiverGenerator riverGenerator;
+public int chunksInPlate;
+public int chunksInZone;
+public int aboveSeaLevel;
+public int baseSeaLevel;
+public int heightBoost;
+public float topFactor;
+
+//init
+chunksInPlate = RiverConfig.Loaded.zonesInPlate * RiverConfig.Loaded.zoneSize / 32;
+chunksInZone = RiverConfig.Loaded.zoneSize / 32;
+
+heightBoost = RiverConfig.Loaded.heightBoost;
+topFactor = RiverConfig.Loaded.topFactor;
+
+riverGenerator = new RiverGenerator();
+
+//end init
+aboveSeaLevel = sapi.WorldManager.MapSizeY - TerraGenConfig.seaLevel;
+baseSeaLevel = TerraGenConfig.seaLevel;
 
 namespace Vintagestory.ServerMods
 {
@@ -27,53 +50,39 @@ namespace Vintagestory.ServerMods
         public const double geoDistortionThreshold = 10.0;
         public const double maxDistortionAmount = (55 + 40 + 30 + 10) * SimplexNoiseOctave.MAX_VALUE_2D_WARP;
 
-        public RiverGenerator riverGenerator;
-
         public int maxThreads;
 
         public LandformsWorldProperty landforms;
-        public Dictionary<int, LerpedWeightedIndex2DMap> LandformMapByRegion = new(10);
+        public Dictionary<int, LerpedWeightedIndex2DMap> landformMapByRegion = new Dictionary<int, LerpedWeightedIndex2DMap>(10);
         public int regionMapSize;
         public float noiseScale;
         public int terrainGenOctaves = 9;
 
         public NewNormalizedSimplexFractalNoise terrainNoise;
-        public SimplexNoise distort2dX;
-        public SimplexNoise distort2dZ;
+        public SimplexNoise distort2dx;
+        public SimplexNoise distort2dz;
         public NormalizedSimplexNoise geoUpheavalNoise;
-        WeightedTaper[] taperMap;
-
-        RiverSample[,] samples = new RiverSample[32, 32];
-
-        public int chunksInPlate;
-        public int chunksInZone;
-        public int aboveSeaLevel;
-        public int baseSeaLevel;
-        public int heightBoost;
-        public float topFactor;
+        public WeightedTaper[] taperMap;
 
         public struct ThreadLocalTempData
         {
             public double[] LerpedAmplitudes;
             public double[] LerpedThresholds;
-            public WeightedIndex[] landformWeights;
         }
         public ThreadLocal<ThreadLocalTempData> tempDataThreadLocal;
 
         public struct WeightedTaper
         {
-            public float TerrainYPos;
-            public float Weight;
+            public float terrainYPos;
+            public float weight;
         }
 
         public struct ColumnResult
         {
-            public BitArray ColumnBlockSolidities;
-            public int WaterBlockID;
+            public BitArray columnBlockSolidities;
+            public int waterBlockId;
         }
         public ColumnResult[] columnResults;
-        public bool[] layerFullySolid;
-        public bool[] layerFullyEmpty;
         public int[] borderIndicesByCardinal;
 
         public override bool ShouldLoad(EnumAppSide side)
@@ -90,12 +99,12 @@ namespace Vintagestory.ServerMods
         {
             sapi = api;
 
-            api.Event.ServerRunPhase(EnumServerRunPhase.ModsAndConfigReady, LoadGamePre);
+            api.Event.ServerRunPhase(EnumServerRunPhase.ModsAndConfigReady, loadGamePre);
             api.Event.InitWorldGenerator(InitWorldGen, "standard");
             api.Event.ChunkColumnGeneration(OnChunkColumnGen, EnumWorldGenPass.Terrain, "standard");
         }
 
-        public void LoadGamePre()
+        private void loadGamePre()
         {
             if (sapi.WorldManager.SaveGame.WorldType != "standard") return;
 
@@ -103,34 +112,14 @@ namespace Vintagestory.ServerMods
             sapi.WorldManager.SetSeaLevel(TerraGenConfig.seaLevel);
         }
 
-        public Type landType = null;
-
         public void InitWorldGen()
         {
-            chunksInPlate = RiverConfig.Loaded.zonesInPlate * RiverConfig.Loaded.zoneSize / 32;
-            chunksInZone = RiverConfig.Loaded.zoneSize / 32;
-
-            heightBoost = RiverConfig.Loaded.heightBoost;
-            topFactor = RiverConfig.Loaded.topFactor;
-
-            riverGenerator = new RiverGenerator();
-
-            Type[] types = AccessTools.GetTypesFromAssembly(Assembly.GetAssembly(typeof(NoiseBase)));
-            foreach (Type type in types)
-            {
-                if (type.Name == "NoiseLandforms")
-                {
-                    landType = type;
-                    break;
-                }
-            }
-            if (landType == null) throw new Exception("NoiseLandforms type not found.");
-
             LoadGlobalConfig(sapi);
-            LandformMapByRegion.Clear();
+            landformMapByRegion.Clear();
 
-            maxThreads = Math.Clamp(Environment.ProcessorCount - (sapi.Server.IsDedicated ? 4 : 6), 1, sapi.Server.Config.HostedMode ? 4 : 10);  // We leave at least 4-6 threads free to avoid lag spikes due to CPU unavailability
+            maxThreads = Math.Min(Environment.ProcessorCount, sapi.Server.Config.HostedMode ? 4 : 10);
 
+            chunksize = sapi.WorldManager.ChunkSize;
             regionMapSize = (int)Math.Ceiling((double)sapi.WorldManager.MapSizeX / sapi.WorldManager.RegionSize);
             noiseScale = Math.Max(1, sapi.WorldManager.MapSizeY / 256f);
             terrainGenOctaves = TerraGenConfig.GetTerrainOctaveCount(sapi.WorldManager.MapSizeY);
@@ -139,21 +128,21 @@ namespace Vintagestory.ServerMods
                 terrainGenOctaves, 0.0005 * NewSimplexNoiseLayer.OldToNewFrequency / noiseScale, 0.9, sapi.WorldManager.Seed
             );
 
-            distort2dX = new SimplexNoise(
+            distort2dx = new SimplexNoise(
                 new double[] { 55, 40, 30, 10 },
-                ScaleAdjustedFreqs(new double[] { 1 / 5.0, 1 / 2.50, 1 / 1.250, 1 / 0.65 }, noiseScale),
+                this.ScaleAdjustedFreqs(new double[] { 1 / 5.0, 1 / 2.50, 1 / 1.250, 1 / 0.65 }, noiseScale),
                 sapi.World.Seed + 9876 + 0
             );
 
-            distort2dZ = new SimplexNoise(
+            distort2dz = new SimplexNoise(
                 new double[] { 55, 40, 30, 10 },
-                ScaleAdjustedFreqs(new double[] { 1 / 5.0, 1 / 2.50, 1 / 1.250, 1 / 0.65 }, noiseScale),
+                this.ScaleAdjustedFreqs(new double[] { 1 / 5.0, 1 / 2.50, 1 / 1.250, 1 / 0.65 }, noiseScale),
                 sapi.World.Seed + 9876 + 2
             );
 
             geoUpheavalNoise = new NormalizedSimplexNoise(
                 new double[] { 55, 40, 30, 15, 7, 4 },
-                ScaleAdjustedFreqs(new double[] {
+                this.ScaleAdjustedFreqs(new double[] {
                     1.0 / 5.5,
                     1.1 / 2.75,
                     1.2 / 1.375,
@@ -167,27 +156,20 @@ namespace Vintagestory.ServerMods
             tempDataThreadLocal = new ThreadLocal<ThreadLocalTempData>(() => new ThreadLocalTempData
             {
                 LerpedAmplitudes = new double[terrainGenOctaves],
-                LerpedThresholds = new double[terrainGenOctaves],
-                landformWeights = new WeightedIndex[landType.GetStaticField<LandformsWorldProperty>("landforms").LandFormsByIndex.Length]
+                LerpedThresholds = new double[terrainGenOctaves]
             });
-
             columnResults = new ColumnResult[chunksize * chunksize];
-            layerFullyEmpty = new bool[sapi.WorldManager.MapSizeY];
-            layerFullySolid = new bool[sapi.WorldManager.MapSizeY];
             taperMap = new WeightedTaper[chunksize * chunksize];
-            for (int i = 0; i < chunksize * chunksize; i++) columnResults[i].ColumnBlockSolidities = new BitArray(sapi.WorldManager.MapSizeY);
+            for (int i = 0; i < chunksize * chunksize; i++) columnResults[i].columnBlockSolidities = new BitArray(sapi.WorldManager.MapSizeY);
 
             borderIndicesByCardinal = new int[8];
             borderIndicesByCardinal[Cardinal.NorthEast.Index] = (chunksize - 1) * chunksize + 0;
             borderIndicesByCardinal[Cardinal.SouthEast.Index] = 0 + 0;
             borderIndicesByCardinal[Cardinal.SouthWest.Index] = 0 + chunksize - 1;
             borderIndicesByCardinal[Cardinal.NorthWest.Index] = (chunksize - 1) * chunksize + chunksize - 1;
-
-            aboveSeaLevel = sapi.WorldManager.MapSizeY - TerraGenConfig.seaLevel;
-            baseSeaLevel = TerraGenConfig.seaLevel;
         }
 
-        public static double[] ScaleAdjustedFreqs(double[] vs, float horizontalScale)
+        public double[] ScaleAdjustedFreqs(double[] vs, float horizontalScale)
         {
             for (int i = 0; i < vs.Length; i++)
             {
@@ -201,109 +183,107 @@ namespace Vintagestory.ServerMods
         {
             if (request.RequiresChunkBorderSmoothing)
             {
-                ushort[][] neighbHeightMaps = request.NeighbourTerrainHeight;
+                ushort[][] neibHeightMaps = request.NeighbourTerrainHeight;
 
-                if (neighbHeightMaps[Cardinal.North.Index] != null)
+                if (neibHeightMaps[Cardinal.North.Index] != null)
                 {
-                    neighbHeightMaps[Cardinal.NorthEast.Index] = null;
-                    neighbHeightMaps[Cardinal.NorthWest.Index] = null;
+                    neibHeightMaps[Cardinal.NorthEast.Index] = null;
+                    neibHeightMaps[Cardinal.NorthWest.Index] = null;
                 }
-                if (neighbHeightMaps[Cardinal.East.Index] != null)
+                if (neibHeightMaps[Cardinal.East.Index] != null)
                 {
-                    neighbHeightMaps[Cardinal.NorthEast.Index] = null;
-                    neighbHeightMaps[Cardinal.SouthEast.Index] = null;
+                    neibHeightMaps[Cardinal.NorthEast.Index] = null;
+                    neibHeightMaps[Cardinal.SouthEast.Index] = null;
                 }
-                if (neighbHeightMaps[Cardinal.South.Index] != null)
+                if (neibHeightMaps[Cardinal.South.Index] != null)
                 {
-                    neighbHeightMaps[Cardinal.SouthWest.Index] = null;
-                    neighbHeightMaps[Cardinal.SouthEast.Index] = null;
+                    neibHeightMaps[Cardinal.SouthWest.Index] = null;
+                    neibHeightMaps[Cardinal.SouthEast.Index] = null;
                 }
-                if (neighbHeightMaps[Cardinal.West.Index] != null)
+                if (neibHeightMaps[Cardinal.West.Index] != null)
                 {
-                    neighbHeightMaps[Cardinal.SouthWest.Index] = null;
-                    neighbHeightMaps[Cardinal.NorthWest.Index] = null;
+                    neibHeightMaps[Cardinal.SouthWest.Index] = null;
+                    neibHeightMaps[Cardinal.NorthWest.Index] = null;
                 }
 
                 string sides = "";
                 for (int i = 0; i < Cardinal.ALL.Length; i++)
                 {
-                    ushort[] neighbMap = neighbHeightMaps[i];
-                    if (neighbMap == null) continue;
+                    var neibMap = neibHeightMaps[i];
+                    if (neibMap == null) continue;
 
                     sides += Cardinal.ALL[i].Code + "_";
                 }
 
-                for (int dx = 0; dx < chunksize; dx++)
+                for (int localX = 0; localX < chunksize; localX++)
                 {
-                    borderIndicesByCardinal[Cardinal.North.Index] = (chunksize - 1) * chunksize + dx;
-                    borderIndicesByCardinal[Cardinal.South.Index] = 0 + dx;
+                    borderIndicesByCardinal[Cardinal.North.Index] = (chunksize - 1) * chunksize + localX;
+                    borderIndicesByCardinal[Cardinal.South.Index] = 0 + localX;
 
-                    for (int dz = 0; dz < chunksize; dz++)
+                    for (int localZ = 0; localZ < chunksize; localZ++)
                     {
                         double sumWeight = 0;
                         double yPos = 0;
                         float maxWeight = 0;
 
-                        borderIndicesByCardinal[Cardinal.East.Index] = dz * chunksize + 0;
-                        borderIndicesByCardinal[Cardinal.West.Index] = dz * chunksize + chunksize - 1;
+                        borderIndicesByCardinal[Cardinal.East.Index] = localZ * chunksize + 0;
+                        borderIndicesByCardinal[Cardinal.West.Index] = localZ * chunksize + chunksize - 1;
 
                         for (int i = 0; i < Cardinal.ALL.Length; i++)
                         {
-                            ushort[] neighbMap = neighbHeightMaps[i];
-                            if (neighbMap == null) continue;
+                            ushort[] neibMap = neibHeightMaps[i];
+                            if (neibMap == null) continue;
 
                             float distToEdge = 0;
 
                             switch (i)
                             {
-                                case 0: // N: Negative Z
-                                    distToEdge = (float)dz / chunksize;
+                                case 0:
+                                    distToEdge = (float)localZ / chunksize;
                                     break;
-                                case 1: // NE: Positive X, negative Z
-                                    distToEdge = (1 - (float)dx / chunksize) + (float)dz / chunksize;
+                                case 1:
+                                    distToEdge = (1 - (float)localX / chunksize) + (float)localZ / chunksize;
                                     break;
-                                case 2: // E: Positive X
-                                    distToEdge = 1 - (float)dx / chunksize;
+                                case 2:
+                                    distToEdge = 1 - (float)localX / chunksize;
                                     break;
-                                case 3: // SE: Positive X, positive Z
-                                    distToEdge = (1 - (float)dx / chunksize) + (1 - (float)dz / chunksize);
+                                case 3:
+                                    distToEdge = (1 - (float)localX / chunksize) + (1 - (float)localZ / chunksize);
                                     break;
-                                case 4: // S: Positive Z
-                                    distToEdge = 1 - (float)dz / chunksize;
+                                case 4:
+                                    distToEdge = 1 - (float)localZ / chunksize;
                                     break;
-                                case 5: // SW: Negative X, positive Z
-                                    distToEdge = (float)dx / chunksize + 1 - (float)dz / chunksize;
+                                case 5:
+                                    distToEdge = (float)localX / chunksize + 1 - (float)localZ / chunksize;
                                     break;
-                                case 6: // W: Negative X
-                                    distToEdge = (float)dx / chunksize;
+                                case 6:
+                                    distToEdge = (float)localX / chunksize;
                                     break;
-                                case 7: // Negative X, negative Z
-                                    distToEdge = (float)dx / chunksize + (float)dz / chunksize;
+                                case 7:
+                                    distToEdge = (float)localX / chunksize + (float)localZ / chunksize;
                                     break;
                             }
 
                             float cardinalWeight = (float)Math.Pow((float)(1 - GameMath.Clamp(distToEdge, 0, 1)), 2);
-                            float neighbYPos = neighbMap[borderIndicesByCardinal[i]] + 0.5f;
+                            float neibYPos = neibMap[borderIndicesByCardinal[i]] + 0.5f;
 
-                            yPos += neighbYPos * Math.Max(0.0001, cardinalWeight);
+                            yPos += neibYPos * Math.Max(0.0001, cardinalWeight);
                             sumWeight += cardinalWeight;
                             maxWeight = Math.Max(maxWeight, cardinalWeight);
                         }
 
-                        taperMap[dz * chunksize + dx] = new WeightedTaper() { TerrainYPos = (float)(yPos / Math.Max(0.0001, sumWeight)), Weight = maxWeight };
+                        taperMap[localZ * chunksize + localX] = new WeightedTaper() { terrainYPos = (float)(yPos / Math.Max(0.0001, sumWeight)), weight = maxWeight };
                     }
                 }
             }
-
 
             Generate(request.Chunks, request.ChunkX, request.ChunkZ, request.RequiresChunkBorderSmoothing);
         }
 
         public void Generate(IServerChunk[] chunks, int chunkX, int chunkZ, bool requiresChunkBorderSmoothing)
         {
-            landforms = landType.GetStaticField<LandformsWorldProperty>("landforms");
+            landforms = NoiseLandforms.landforms;
             IMapChunk mapChunk = chunks[0].MapChunk;
-            const int chunksize = GlobalConstants.ChunkSize;
 
             int climateUpLeft;
             int climateUpRight;
@@ -318,15 +298,15 @@ namespace Vintagestory.ServerMods
             IntDataMap2D climateMap = chunks[0].MapChunk.MapRegion.ClimateMap;
             IntDataMap2D oceanMap = chunks[0].MapChunk.MapRegion.OceanMap;
             int regionChunkSize = sapi.WorldManager.RegionSize / chunksize;
-            float climateFactor = (float)climateMap.InnerSize / regionChunkSize;
+            float cfac = (float)climateMap.InnerSize / regionChunkSize;
 
             int rlX = chunkX % regionChunkSize;
             int rlZ = chunkZ % regionChunkSize;
 
-            climateUpLeft = climateMap.GetUnpaddedInt((int)(rlX * climateFactor), (int)(rlZ * climateFactor));
-            climateUpRight = climateMap.GetUnpaddedInt((int)(rlX * climateFactor + climateFactor), (int)(rlZ * climateFactor));
-            climateBotLeft = climateMap.GetUnpaddedInt((int)(rlX * climateFactor), (int)(rlZ * climateFactor + climateFactor));
-            climateBotRight = climateMap.GetUnpaddedInt((int)(rlX * climateFactor + climateFactor), (int)(rlZ * climateFactor + climateFactor));
+            climateUpLeft = climateMap.GetUnpaddedInt((int)(rlX * cfac), (int)(rlZ * cfac));
+            climateUpRight = climateMap.GetUnpaddedInt((int)(rlX * cfac + cfac), (int)(rlZ * cfac));
+            climateBotLeft = climateMap.GetUnpaddedInt((int)(rlX * cfac), (int)(rlZ * cfac + cfac));
+            climateBotRight = climateMap.GetUnpaddedInt((int)(rlX * cfac + cfac), (int)(rlZ * cfac + cfac));
 
             int oceanUpLeft = 0;
             int oceanUpRight = 0;
@@ -334,48 +314,42 @@ namespace Vintagestory.ServerMods
             int oceanBotRight = 0;
             if (oceanMap != null && oceanMap.Data.Length > 0)
             {
-                float oceanFactor = (float)oceanMap.InnerSize / regionChunkSize;
-                oceanUpLeft = oceanMap.GetUnpaddedInt((int)(rlX * oceanFactor), (int)(rlZ * oceanFactor));
-                oceanUpRight = oceanMap.GetUnpaddedInt((int)(rlX * oceanFactor + oceanFactor), (int)(rlZ * oceanFactor));
-                oceanBotLeft = oceanMap.GetUnpaddedInt((int)(rlX * oceanFactor), (int)(rlZ * oceanFactor + oceanFactor));
-                oceanBotRight = oceanMap.GetUnpaddedInt((int)(rlX * oceanFactor + oceanFactor), (int)(rlZ * oceanFactor + oceanFactor));
+                float ofac = (float)oceanMap.InnerSize / regionChunkSize;
+                oceanUpLeft = oceanMap.GetUnpaddedInt((int)(rlX * ofac), (int)(rlZ * ofac));
+                oceanUpRight = oceanMap.GetUnpaddedInt((int)(rlX * ofac + ofac), (int)(rlZ * ofac));
+                oceanBotLeft = oceanMap.GetUnpaddedInt((int)(rlX * ofac), (int)(rlZ * ofac + ofac));
+                oceanBotRight = oceanMap.GetUnpaddedInt((int)(rlX * ofac + ofac), (int)(rlZ * ofac + ofac));
             }
 
             IntDataMap2D upheavalMap = chunks[0].MapChunk.MapRegion.UpheavelMap;
             if (upheavalMap != null)
             {
-                float upheavalFactor = (float)upheavalMap.InnerSize / regionChunkSize;
-                upheavalMapUpLeft = upheavalMap.GetUnpaddedInt((int)(rlX * upheavalFactor), (int)(rlZ * upheavalFactor));
-                upheavalMapUpRight = upheavalMap.GetUnpaddedInt((int)(rlX * upheavalFactor + upheavalFactor), (int)(rlZ * upheavalFactor));
-                upheavalMapBotLeft = upheavalMap.GetUnpaddedInt((int)(rlX * upheavalFactor), (int)(rlZ * upheavalFactor + upheavalFactor));
-                upheavalMapBotRight = upheavalMap.GetUnpaddedInt((int)(rlX * upheavalFactor + upheavalFactor), (int)(rlZ * upheavalFactor + upheavalFactor));
+                float ufac = (float)upheavalMap.InnerSize / regionChunkSize;
+                upheavalMapUpLeft = upheavalMap.GetUnpaddedInt((int)(rlX * ufac), (int)(rlZ * ufac));
+                upheavalMapUpRight = upheavalMap.GetUnpaddedInt((int)(rlX * ufac + ufac), (int)(rlZ * ufac));
+                upheavalMapBotLeft = upheavalMap.GetUnpaddedInt((int)(rlX * ufac), (int)(rlZ * ufac + ufac));
+                upheavalMapBotRight = upheavalMap.GetUnpaddedInt((int)(rlX * ufac + ufac), (int)(rlZ * ufac + ufac));
             }
 
-            int rockID = GlobalConfig.defaultRockId;
-            float oceanicityFactor = sapi.WorldManager.MapSizeY / 256 * 0.33333f; //At a mapheight of 255, submerge land by up to 85 blocks
+
+            int rockId = GlobalConfig.defaultRockId;
+            float oceanicityFac = sapi.WorldManager.MapSizeY / 256 * 0.33333f; // At a mapheight of 255, submerge land by up to 85 blocks
 
             IntDataMap2D landformMap = mapChunk.MapRegion.LandformMap;
-
-            //# of pixels for each chunk (probably 1, 2, or 4) in the landform map
             float chunkPixelSize = landformMap.InnerSize / regionChunkSize;
-
-            //Start coordinates for the chunk in the region map
-            float baseX = chunkX % regionChunkSize * chunkPixelSize;
-            float baseZ = chunkZ % regionChunkSize * chunkPixelSize;
+            float baseX = (chunkX % regionChunkSize) * chunkPixelSize;
+            float baseZ = (chunkZ % regionChunkSize) * chunkPixelSize;
 
             LerpedWeightedIndex2DMap landLerpMap = GetOrLoadLerpedLandformMap(chunks[0].MapChunk, chunkX / regionChunkSize, chunkZ / regionChunkSize);
 
-            //Terrain octaves
             double[] octNoiseX0, octNoiseX1, octNoiseX2, octNoiseX3;
             double[] octThX0, octThX1, octThX2, octThX3;
 
-            WeightedIndex[] landformWeights = tempDataThreadLocal.Value.landformWeights;
-            GetInterpolatedOctaves(landLerpMap.WeightsAt(baseX, baseZ, landformWeights), out octNoiseX0, out octThX0);
-            GetInterpolatedOctaves(landLerpMap.WeightsAt(baseX + chunkPixelSize, baseZ, landformWeights), out octNoiseX1, out octThX1);
-            GetInterpolatedOctaves(landLerpMap.WeightsAt(baseX, baseZ + chunkPixelSize, landformWeights), out octNoiseX2, out octThX2);
-            GetInterpolatedOctaves(landLerpMap.WeightsAt(baseX + chunkPixelSize, baseZ + chunkPixelSize, landformWeights), out octNoiseX3, out octThX3);
+            GetInterpolatedOctaves(landLerpMap[baseX, baseZ], out octNoiseX0, out octThX0);
+            GetInterpolatedOctaves(landLerpMap[baseX + chunkPixelSize, baseZ], out octNoiseX1, out octThX1);
+            GetInterpolatedOctaves(landLerpMap[baseX, baseZ + chunkPixelSize], out octNoiseX2, out octThX2);
+            GetInterpolatedOctaves(landLerpMap[baseX + chunkPixelSize, baseZ + chunkPixelSize], out octNoiseX3, out octThX3);
 
-            //Store heightmap in the map chunk
             ushort[] rainHeightMap = chunks[0].MapChunk.RainHeightMap;
             ushort[] terrainHeightMap = chunks[0].MapChunk.WorldGenTerrainHeightMap;
 
@@ -387,268 +361,135 @@ namespace Vintagestory.ServerMods
             float chunkBlockDelta = 1.0f / chunksize;
             float chunkPixelBlockStep = chunkPixelSize * chunkBlockDelta;
             double verticalNoiseRelativeFrequency = 0.5 / TerraGenConfig.terrainNoiseVerticalScale;
-            for (int y = 0; y < layerFullySolid.Length; y++) layerFullySolid[y] = true; //Fill with true; later if any block in the layer is non-solid we will set it to false
-            for (int y = 0; y < layerFullyEmpty.Length; y++) layerFullyEmpty[y] = true; //Fill with true; later if any block in the layer is non-solid we will set it to false
-            layerFullyEmpty[mapSizeY - 1] = false; //The top block is always empty (air), leaving space for grass, snowlayer etc.
-            LandformVariant[] landFormsByIndex = landforms.LandFormsByIndex;
 
-            //1. Get data needed for the entire chunk here
-            int plateX = chunkX / chunksInPlate;
-            int plateZ = chunkZ / chunksInPlate;
-            TectonicPlate plate = ObjectCacheUtil.GetOrCreate(sapi, plateX.ToString() + "+" + plateZ.ToString(), () =>
-            {
-                return new TectonicPlate(sapi, plateX, plateZ);
-            });
-            int localChunkX = chunkX % chunksInPlate;
-            int localChunkZ = chunkZ % chunksInPlate;
-            int localZoneX = localChunkX / chunksInZone;
-            int localZoneZ = localChunkZ / chunksInZone;
-            Vec2d plateStart = plate.globalPlateStart;
-            List<TectonicZone> riverZoneList = plate.GetZonesAround(localZoneX, localZoneZ, 2);
-            List<RiverSegment> validSegments = new();
-            Vec2d localStart = new(localChunkX * chunksize, localChunkZ * chunksize);
-            foreach (TectonicZone riverZone in riverZoneList)
-            {
-                foreach (River river in riverZone.rivers)
-                {
-                    if (RiverMath.DistanceToLine(localStart, river.startPoint, river.endPoint) < 400)
-                    {
-                        foreach (RiverSegment segment in river.segments)
-                        {
-                            if (RiverMath.DistanceToLine(localStart, segment.startPoint, segment.endPoint) < 200)
-                            {
-                                validSegments.Add(segment); //Later check for duplicates. If the distance to another segment is too great it shouldn't have to be here
-                            }
-                        }
-                    }
-                }
-            }
-            validSegments = validSegments.OrderBy(p => RiverMath.DistanceToLine(localStart, p.startPoint, p.endPoint)).ToList();
-            //Optimize the searching
-
-            float[] flowVectorsX = new float[32 * 32];
-            float[] flowVectorsZ = new float[32 * 32];
-            bool riverBank = false;
-
-            Parallel.For(0, chunksize * chunksize, new ParallelOptions() { MaxDegreeOfParallelism = maxThreads }, chunkIndex2d => 
-            {
+            Parallel.For(0, chunksize * chunksize, new ParallelOptions() { MaxDegreeOfParallelism = maxThreads }, chunkIndex2d => {
                 int localX = chunkIndex2d % chunksize;
                 int localZ = chunkIndex2d / chunksize;
-
                 int worldX = chunkX * chunksize + localX;
                 int worldZ = chunkZ * chunksize + localZ;
-
-                //Calculate river data
-                samples[localX, localZ] = riverGenerator.SampleRiver(validSegments, localStart.X + localX, localStart.Y + localZ);
-                if (samples[localX, localZ].flowVectorX > -100)
-                {
-                    flowVectorsX[localZ * 32 + localX] = samples[localX, localZ].flowVectorX;
-                    flowVectorsZ[localZ * 32 + localX] = samples[localX, localZ].flowVectorZ;
-                    riverBank = true;
-                }
-
-                BitArray columnBlockSolidities = columnResults[chunkIndex2d].ColumnBlockSolidities;
-
+                BitArray columnBlockSolidities = columnResults[chunkIndex2d].columnBlockSolidities;
                 double[] lerpedAmps = tempDataThreadLocal.Value.LerpedAmplitudes;
                 double[] lerpedTh = tempDataThreadLocal.Value.LerpedThresholds;
 
-                //Calculating these 1024 times is very costly: landLerpMap places on the heap 2 new Dictionary, 1 new SortedDictionary, and 3 new WeightedIndex[]
-                WeightedIndex[] columnLandformIndexedWeights = tempDataThreadLocal.Value.landformWeights;
-                landLerpMap.WeightsAt(baseX + localX * chunkPixelBlockStep, baseZ + localZ * chunkPixelBlockStep, columnLandformIndexedWeights);
+                WeightedIndex[] columnWeightedIndices = landLerpMap[baseX + localX * chunkPixelBlockStep, baseZ + localZ * chunkPixelBlockStep];
                 for (int i = 0; i < terrainGenOctaves; i++)
                 {
                     lerpedAmps[i] = GameMath.BiLerp(octNoiseX0[i], octNoiseX1[i], octNoiseX2[i], octNoiseX3[i], localX * chunkBlockDelta, localZ * chunkBlockDelta);
                     lerpedTh[i] = GameMath.BiLerp(octThX0[i], octThX1[i], octThX2[i], octThX3[i], localX * chunkBlockDelta, localZ * chunkBlockDelta);
                 }
 
-                //Create directional compression effect
                 VectorXZ dist = NewDistortionNoise(worldX, worldZ);
                 VectorXZ distTerrain = ApplyIsotropicDistortionThreshold(dist * terrainDistortionMultiplier, terrainDistortionThreshold,
                     terrainDistortionMultiplier * maxDistortionAmount);
                 VectorXZ distGeo = ApplyIsotropicDistortionThreshold(dist * geoDistortionMultiplier, geoDistortionThreshold,
                     geoDistortionMultiplier * maxDistortionAmount);
 
-                //Get Y distortion from oceanicity and upheaval
                 float upHeavalStrength = GameMath.BiLerp(upheavalMapUpLeft, upheavalMapUpRight, upheavalMapBotLeft, upheavalMapBotRight, localX * chunkBlockDelta, localZ * chunkBlockDelta);
-                float oceanicity = GameMath.BiLerp(oceanUpLeft, oceanUpRight, oceanBotLeft, oceanBotRight, localX * chunkBlockDelta, localZ * chunkBlockDelta) * oceanicityFactor;
+                float oceanicity = GameMath.BiLerp(oceanUpLeft, oceanUpRight, oceanBotLeft, oceanBotRight, localX * chunkBlockDelta, localZ * chunkBlockDelta) * oceanicityFac;
                 float distY = oceanicity + ComputeOceanAndUpheavalDistY(upHeavalStrength, worldX, worldZ, distGeo);
 
-                columnResults[chunkIndex2d].WaterBlockID = oceanicity > 1 ? GlobalConfig.saltWaterBlockId : GlobalConfig.waterBlockId;
+                columnResults[chunkIndex2d].waterBlockId = oceanicity > 1 ? GlobalConfig.saltWaterBlockId : GlobalConfig.waterBlockId;
 
-                //Prepare the noise for the entire column
                 NewNormalizedSimplexFractalNoise.ColumnNoise columnNoise = terrainNoise.ForColumn(verticalNoiseRelativeFrequency, lerpedAmps, lerpedTh, worldX + distTerrain.X, worldZ + distTerrain.Z);
 
                 WeightedTaper wTaper = taperMap[chunkIndex2d];
 
                 for (int posY = 1; posY < mapSizeY - 1; posY++)
                 {
-                    //Setup a lerp between threshold values, so that distortY can be applied continuously there
                     StartSampleDisplacedYThreshold(posY + distY, mapSizeYm2, out int distortedPosYBase, out float distortedPosYSlide);
 
-                    //Value starts as the landform Y threshold
                     double threshold = 0;
-                    for (int i = 0; i < columnLandformIndexedWeights.Length; i++)
+                    for (int i = 0; i < columnWeightedIndices.Length; i++)
                     {
-                        float weight = columnLandformIndexedWeights[i].Weight;
-                        if (weight == 0) continue;
-
-                        //Sample the two values to lerp between. The value of distortedPosYBase is clamped in such a way that this always works
-                        //Underflow and overflow of distortedPosY result in linear extrapolation
-
-                        float[] thresholds = landFormsByIndex[columnLandformIndexedWeights[i].Index].TerrainYThresholds;
+                        float[] thresholds = landforms.LandFormsByIndex[columnWeightedIndices[i].Index].TerrainYThresholds;
                         float thresholdValue = ContinueSampleDisplacedYThreshold(distortedPosYBase, distortedPosYSlide, thresholds);
-                        threshold += thresholdValue * weight;
+                        threshold += thresholdValue * columnWeightedIndices[i].Weight;
                     }
 
-                    //Geo Upheaval modifier for threshold
                     double geoUpheavalTaper = ComputeGeoUpheavalTaper(posY, distY, taperThreshold, geoUpheavalAmplitude, mapSizeY);
                     threshold += geoUpheavalTaper;
 
                     if (requiresChunkBorderSmoothing)
                     {
-                        double th = posY > wTaper.TerrainYPos ? 1 : -1;
+                        double th = posY > wTaper.terrainYPos ? 1 : -1;
 
-                        float yDiff = Math.Abs(posY - wTaper.TerrainYPos);
-                        double noise = yDiff > 10 ? 0 : distort2dX.Noise(-(chunkX * chunksize + localX) / 10.0, posY / 10.0, -(chunkZ * chunksize + localZ) / 10.0) / Math.Max(1, yDiff / 2.0);
+                        float yDiff = Math.Abs(posY - wTaper.terrainYPos);
+                        double noise = yDiff > 10 ? 0 : distort2dx.Noise(-(chunkX * chunksize + localX) / 10.0, posY / 10.0, -(chunkZ * chunksize + localZ) / 10.0) / Math.Max(1, yDiff / 2.0);
 
-                        noise *= GameMath.Clamp(2 * (1 - wTaper.Weight), 0, 1) * 0.1;
+                        noise *= GameMath.Clamp(2 * (1 - wTaper.weight), 0, 1) * 0.1;
 
-                        threshold = GameMath.Lerp(threshold, th + noise, wTaper.Weight);
+                        threshold = GameMath.Lerp(threshold, th + noise, wTaper.weight);
                     }
 
-                    //Often we don't need to calculate the noise
-                    //First case also catches NaN if it were to ever happen
                     double noiseSign;
                     if (!(threshold < columnNoise.BoundMax)) noiseSign = double.NegativeInfinity;
                     else if (threshold <= columnNoise.BoundMin) noiseSign = double.PositiveInfinity;
 
-                    //But sometimes we do
                     else
                     {
                         noiseSign = -NormalizedSimplexNoise.NoiseValueCurveInverse(threshold);
                         noiseSign = columnNoise.NoiseSign(posY, noiseSign);
                     }
 
-                    //columnBlockSolidities[posY] = noiseSign > 0;
-                    //layerFullyEmpty[posY] = false;
-                    //layerFullySolid[posY] = false;
-
-                    //This massively breaks things right now
-
-                    if (noiseSign > 0) //Solid
-                    {
-                        columnBlockSolidities[posY] = true;
-                        layerFullyEmpty[posY] = false; //Thread safe even when this is parallel
-                    }
-                    else
-                    {
-                        columnBlockSolidities[posY] = false;
-                        layerFullySolid[posY] = false; //Thread safe even when this is parallel
-                    }
-
-                    if (samples[localX, localZ].bankFactor > 0)
-                    {
-                        layerFullyEmpty[posY] = false;
-                        layerFullySolid[posY] = false;
-                    }
+                    columnBlockSolidities[posY] = (noiseSign > 0);
                 }
             });
 
-            IChunkBlocks chunkBlockData = chunks[0].Data;
-
-            //First set all the fully solid layers in bulk, as much as possible
+            int chunkY = 0;
+            int localY = 1;
+            IChunkBlocks chunkBlockData = chunks[chunkY].Data;
             chunkBlockData.SetBlockBulk(0, chunksize, chunksize, GlobalConfig.mantleBlockId);
-            int yBase = 1;
-            for (; yBase < mapSizeY - 1; yBase++)
+            for (int posY = 1; posY < mapSizeY - 1; posY++)
             {
-                if (layerFullySolid[yBase])
+                for (int localZ = 0; localZ < chunksize; localZ++)
                 {
-                    if (yBase % chunksize == 0)
+                    int worldZ = chunkZ * chunksize + localZ;
+                    for (int localX = 0; localX < chunksize; localX++)
                     {
-                        chunkBlockData = chunks[yBase / chunksize].Data;
-                    }
+                        int worldX = chunkX * chunksize + localX;
 
-                    chunkBlockData.SetBlockBulk((yBase % chunksize) * chunksize * chunksize, chunksize, chunksize, rockID);
-                }
-                else break;
-            }
-
-            // Now figure out the top of the mixed layers (above yTop we have fully empty layers, i.e. air)
-            int seaLevel = TerraGenConfig.seaLevel;
-            int surfaceWaterId = 0;
-            int yTop = mapSizeY - 2; //yTop never more than (mapSizey - 1), but leave the top block layer on the map always as air / for grass
-            while (yTop >= yBase && layerFullyEmpty[yTop]) yTop--; //Decrease yTop, we don't need to generate anything for fully empty (air layers)
-            if (yTop < seaLevel) yTop = seaLevel;
-            yTop++; //Add back one because this is going to be the loop until limit
-
-            //Then for the rest place blocks column by column (from yBase to yTop only; outside that range layers were already placed below, or are fully air above)
-            for (int localZ = 0; localZ < chunksize; localZ++)
-            {
-                int worldZ = chunkZ * chunksize + localZ;
-                int mapIndex = ChunkIndex2d(0, localZ);
-                for (int localX = 0; localX < chunksize; localX++)
-                {
-                    ColumnResult columnResult = columnResults[mapIndex];
-                    int waterId = columnResult.WaterBlockID;
-
-                    if (yBase < seaLevel && waterId != GlobalConfig.saltWaterBlockId) //Finding the surface water / ice id, relevant only for fresh water and only if there is a non-solid block in the column below sea-level
-                    {
-                        int temp = (GameMath.BiLerpRgbColor(localX * chunkBlockDelta, localZ * chunkBlockDelta, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight) >> 16) & 0xFF;
-                        float distort = (float)distort2dX.Noise(chunkX * chunksize + localX, worldZ) / 20f;
-                        float tempf = TerraGenConfig.GetScaledAdjustedTemperatureFloat(temp, 0) + distort;
-                        surfaceWaterId = (tempf < TerraGenConfig.WaterFreezingTempOnGen) ? GlobalConfig.lakeIceBlockId : waterId;
-                    }
-
-                    terrainHeightMap[mapIndex] = (ushort)(yBase - 1); //Initially set the height maps to values reflecting the top of the fully solid layers
-                    rainHeightMap[mapIndex] = (ushort)(yBase - 1);
-
-                    chunkBlockData = chunks[yBase / chunksize].Data;
-                    for (int posY = yBase; posY < yTop; posY++)
-                    {
-                        int localY = posY % chunksize;
+                        int mapIndex = ChunkIndex2d(localX, localZ);
                         int chunkIndex = ChunkIndex3d(localX, localY, localZ);
 
-                        RiverSample sample = samples[localX, localZ];
-                        int bankFactorBlocks = (int)(sample.bankFactor * aboveSeaLevel);
-                        int baseline = baseSeaLevel + heightBoost;
+                        ColumnResult columnResult = columnResults[mapIndex];
+                        bool isSolid = columnResult.columnBlockSolidities[posY];
+                        int waterID = columnResult.waterBlockId;
 
-                        //3. Make sure blocks can't be placed in the river area
-                        if (columnResult.ColumnBlockSolidities[posY] && (posY <= baseline - bankFactorBlocks || posY >= baseline + bankFactorBlocks * topFactor)) //If isSolid
+                        if (isSolid)
                         {
                             terrainHeightMap[mapIndex] = (ushort)posY;
                             rainHeightMap[mapIndex] = (ushort)posY;
-                            chunkBlockData[chunkIndex] = rockID;
+                            chunkBlockData[chunkIndex] = rockId;
                         }
-                        else if (posY < seaLevel)
+                        else if (posY < TerraGenConfig.seaLevel)
                         {
+                            rainHeightMap[mapIndex] = (ushort)posY;
+
                             int blockId;
-                            if (posY == seaLevel - 1)
+                            if (posY == TerraGenConfig.seaLevel - 1)
                             {
-                                rainHeightMap[mapIndex] = (ushort)posY; //We only need to set the rainHeightMap on the top block
-                                blockId = surfaceWaterId;
+                                int temp = (GameMath.BiLerpRgbColor(localX * chunkBlockDelta, localZ * chunkBlockDelta, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight) >> 16) & 0xFF;
+                                float distort = (float)distort2dx.Noise(worldX, worldZ) / 20f;
+                                float tempF = TerraGenConfig.GetScaledAdjustedTemperatureFloat(temp, 0) + distort;
+                                blockId = (tempF < TerraGenConfig.WaterFreezingTempOnGen && waterID != GlobalConfig.saltWaterBlockId) ? GlobalConfig.lakeIceBlockId : waterID;
                             }
                             else
                             {
-                                blockId = waterId;
+                                blockId = waterID;
                             }
 
                             chunkBlockData.SetFluid(chunkIndex, blockId);
                         }
-
-                        if (localY == chunksize - 1)
-                        {
-                            chunkBlockData = chunks[(posY + 1) / chunksize].Data;  // Set up the next chunksBlockData value
-                        }
                     }
-
-                    mapIndex++;
                 }
-            }
 
-            if (riverBank)
-            {
-                chunks[0].SetModdata<float[]>("flowVectorsX", flowVectorsX);
-                chunks[0].SetModdata<float[]>("flowVectorsZ", flowVectorsZ);
+                localY++;
+                if (localY == chunksize)
+                {
+                    localY = 0;
+                    chunkY++;
+                    chunkBlockData = chunks[chunkY].Data;
+                }
             }
 
             ushort yMax = 0;
@@ -662,10 +503,10 @@ namespace Vintagestory.ServerMods
 
         public LerpedWeightedIndex2DMap GetOrLoadLerpedLandformMap(IMapChunk mapchunk, int regionX, int regionZ)
         {
-            LandformMapByRegion.TryGetValue(regionZ * regionMapSize + regionX, out LerpedWeightedIndex2DMap map);
+            landformMapByRegion.TryGetValue(regionZ * regionMapSize + regionX, out LerpedWeightedIndex2DMap map);
             if (map != null) return map;
             IntDataMap2D landformMap = mapchunk.MapRegion.LandformMap;
-            map = LandformMapByRegion[regionZ * regionMapSize + regionX]
+            map = landformMapByRegion[regionZ * regionMapSize + regionX]
                 = new LerpedWeightedIndex2DMap(landformMap.Data, landformMap.Size, TerraGenConfig.landFormSmoothingRadius, landformMap.TopLeftPadding, landformMap.BottomRightPadding);
 
             return map;
@@ -695,7 +536,7 @@ namespace Vintagestory.ServerMods
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void StartSampleDisplacedYThreshold(float distortedPosY, int mapSizeYm2, out int yBase, out float ySlide)
+        public static void StartSampleDisplacedYThreshold(float distortedPosY, int mapSizeYm2, out int yBase, out float ySlide)
         {
             int distortedPosYBase = (int)Math.Floor(distortedPosY);
             yBase = GameMath.Clamp(distortedPosYBase, 0, mapSizeYm2);
@@ -733,7 +574,7 @@ namespace Vintagestory.ServerMods
         {
             double noiseX = worldX / 400.0;
             double noiseZ = worldZ / 400.0;
-            SimplexNoise.NoiseFairWarpVector(distort2dX, distort2dZ, noiseX, noiseZ, out double distX, out double distZ);
+            SimplexNoise.NoiseFairWarpVector(distort2dx, distort2dz, noiseX, noiseZ, out double distX, out double distZ);
             return new VectorXZ { X = distX, Z = distZ };
         }
 
@@ -779,3 +620,76 @@ namespace Vintagestory.ServerMods
         }
     }
 }
+
+//In parallel
+samples[localX, localZ] = riverGenerator.SampleRiver(validSegments, localStart.X + localX, localStart.Y + localZ);
+if (samples[localX, localZ].flowVectorX > -100)
+{
+    flowVectorsX[localZ * 32 + localX] = samples[localX, localZ].flowVectorX;
+    flowVectorsZ[localZ * 32 + localX] = samples[localX, localZ].flowVectorZ;
+    riverBank = true;
+}
+
+//end of loop
+if (samples[localX, localZ].bankFactor > 0)
+{
+    layerFullyEmpty[posY] = false;
+    layerFullySolid[posY] = false;
+}
+
+//before loop
+//1. Get data needed for the entire chunk here
+int plateX = chunkX / chunksInPlate;
+int plateZ = chunkZ / chunksInPlate;
+TectonicPlate plate = ObjectCacheUtil.GetOrCreate(sapi, plateX.ToString() + "+" + plateZ.ToString(), () =>
+{
+    return new TectonicPlate(sapi, plateX, plateZ);
+});
+int localChunkX = chunkX % chunksInPlate;
+int localChunkZ = chunkZ % chunksInPlate;
+int localZoneX = localChunkX / chunksInZone;
+int localZoneZ = localChunkZ / chunksInZone;
+Vec2d plateStart = plate.globalPlateStart;
+List<TectonicZone> riverZoneList = plate.GetZonesAround(localZoneX, localZoneZ, 2);
+List<RiverSegment> validSegments = new();
+Vec2d localStart = new(localChunkX * chunksize, localChunkZ * chunksize);
+foreach (TectonicZone riverZone in riverZoneList)
+{
+    foreach (River river in riverZone.rivers)
+    {
+        if (RiverMath.DistanceToLine(localStart, river.startPoint, river.endPoint) < 400)
+        {
+            foreach (RiverSegment segment in river.segments)
+            {
+                if (RiverMath.DistanceToLine(localStart, segment.startPoint, segment.endPoint) < 200)
+                {
+                    validSegments.Add(segment); //Later check for duplicates. If the distance to another segment is too great it shouldn't have to be here
+                }
+            }
+        }
+    }
+}
+validSegments = validSegments.OrderBy(p => RiverMath.DistanceToLine(localStart, p.startPoint, p.endPoint)).ToList();
+//Optimize the searching
+
+float[] flowVectorsX = new float[32 * 32];
+float[] flowVectorsZ = new float[32 * 32];
+bool riverBank = false;
+
+//check
+RiverSample sample = samples[localX, localZ];
+int bankFactorBlocks = (int)(sample.bankFactor * aboveSeaLevel);
+int baseline = baseSeaLevel + heightBoost;
+
+//3. Make sure blocks can't be placed in the river area
+if (columnResult.ColumnBlockSolidities[posY] && (posY <= baseline - bankFactorBlocks || posY >= baseline + bankFactorBlocks * topFactor))
+
+    //before y max
+    if (riverBank)
+    {
+        chunks[0].SetModdata<float[]>("flowVectorsX", flowVectorsX);
+        chunks[0].SetModdata<float[]>("flowVectorsZ", flowVectorsZ);
+    }
+
+// field declaration
+RiverSample[,] samples = new RiverSample[32, 32];
