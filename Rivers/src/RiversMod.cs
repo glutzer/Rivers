@@ -5,6 +5,7 @@ public class RiversMod : ModSystem
 {
     public Harmony harmony;
     public static bool patched = false;
+    public bool patchedLocal = false;
     public bool devEnvironment = true;
 
     public override double ExecuteOrder()
@@ -26,6 +27,7 @@ public class RiversMod : ModSystem
             harmony = new Harmony("rivers");
             harmony.PatchAll();
             patched = true;
+            patchedLocal = true;
         }
 
         string cfgFileName = "rivers.json";
@@ -44,6 +46,17 @@ public class RiversMod : ModSystem
         catch
         {
             api.StoreModConfig(RiverConfig.Loaded, cfgFileName);
+        }
+    }
+
+    public override void Dispose()
+    {
+        ChunkTesselatorManagerPatch.bottomChunk = null;
+        if (patchedLocal)
+        {
+            harmony.UnpatchAll("rivers");
+            patched = false;
+            patchedLocal = false;
         }
     }
 }

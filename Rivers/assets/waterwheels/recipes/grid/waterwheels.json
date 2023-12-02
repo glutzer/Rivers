@@ -9,7 +9,7 @@
         "toolDurabilityCost": 100
       },
       "A": {
-        "type": "item",
+        "type": "block",
         "code": "game:woodenaxle-ud"
       },
       "C": {
@@ -64,7 +64,7 @@
         "toolDurabilityCost": 50
       },
       "A": {
-        "type": "item",
+        "type": "block",
         "code": "game:woodenaxle-ud"
       },
       "C": {

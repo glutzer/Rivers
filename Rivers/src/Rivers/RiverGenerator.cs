@@ -9,14 +9,17 @@ public class RiverGenerator
 
     public Noise riverDistortionX;
     public Noise riverDistortionZ;
-    
+
+    public int strength;
+
     public RiverGenerator()
     {
         riverDepth = RiverConfig.Loaded.riverDepth;
         baseDepth = RiverConfig.Loaded.baseDepth;
 
-        riverDistortionX = new Noise(0, 0.008f, 2, 0.5f);
-        riverDistortionZ = new Noise(2, 0.008f, 2, 0.5f);
+        riverDistortionX = new Noise(0, RiverConfig.Loaded.riverFrequency, RiverConfig.Loaded.riverOctaves, RiverConfig.Loaded.riverGain, RiverConfig.Loaded.riverLacunarity);
+        riverDistortionZ = new Noise(2, RiverConfig.Loaded.riverFrequency, RiverConfig.Loaded.riverOctaves, RiverConfig.Loaded.riverGain, RiverConfig.Loaded.riverLacunarity);
+        strength = RiverConfig.Loaded.riverStrength;
     }
 
     public RiverSample SampleRiver(List<RiverSegment> segments, double x, double z)
@@ -28,7 +31,7 @@ public class RiverGenerator
         double distX = riverDistortionX.GetNoise(x, z);
         double distZ = riverDistortionZ.GetNoise(x, z);
 
-        Vec2d point = new(x + distX * 10, z + distZ * 10);
+        Vec2d point = new(x + distX * strength, z + distZ * strength);
 
         foreach (RiverSegment segment in segments)
         {

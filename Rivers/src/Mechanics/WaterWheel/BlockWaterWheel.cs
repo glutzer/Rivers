@@ -15,19 +15,6 @@ public class BlockWaterWheel : BlockMPBase
         return face == powerOutFacing || face.Opposite == powerOutFacing; //Provide power to both sides
     }
 
-    public override void OnBlockRemoved(IWorldAccessor world, BlockPos pos)
-    {
-        base.OnBlockRemoved(world, pos);
-
-        if (api.Side == EnumAppSide.Server)
-        {
-            IWorldChunk chunk = api.World.BlockAccessor.GetChunk(pos.X / 32, 0, pos.Z / 32);
-
-            int wheelsInChunk = chunk.GetModdata<int>("wheelsInChunk");
-            chunk.SetModdata<int>("wheelsInChunk", wheelsInChunk--);
-        }
-    }
-
     public override void OnLoaded(ICoreAPI api)
     {
         powerOutFacing = BlockFacing.FromCode(Variant["side"]).Opposite;

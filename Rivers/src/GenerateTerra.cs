@@ -43,10 +43,14 @@ namespace Vintagestory.ServerMods
         public NormalizedSimplexNoise geoUpheavalNoise;
         WeightedTaper[] taperMap;
 
+        RiverSample[,] samples = new RiverSample[32, 32];
+
         public int chunksInPlate;
         public int chunksInZone;
         public int aboveSeaLevel;
         public int baseSeaLevel;
+        public int heightBoost;
+        public float topFactor;
 
         public struct ThreadLocalTempData
         {
@@ -105,6 +109,9 @@ namespace Vintagestory.ServerMods
         {
             chunksInPlate = RiverConfig.Loaded.zonesInPlate * RiverConfig.Loaded.zoneSize / 32;
             chunksInZone = RiverConfig.Loaded.zoneSize / 32;
+
+            heightBoost = RiverConfig.Loaded.heightBoost;
+            topFactor = RiverConfig.Loaded.topFactor;
 
             riverGenerator = new RiverGenerator();
 
@@ -295,7 +302,7 @@ namespace Vintagestory.ServerMods
         public void Generate(IServerChunk[] chunks, int chunkX, int chunkZ, bool requiresChunkBorderSmoothing)
         {
             landforms = landType.GetStaticField<LandformsWorldProperty>("landforms");
-            IMapChunk mapchunk = chunks[0].MapChunk;
+            IMapChunk mapChunk = chunks[0].MapChunk;
             const int chunksize = GlobalConstants.ChunkSize;
 
             int climateUpLeft;
@@ -347,7 +354,7 @@ namespace Vintagestory.ServerMods
             int rockID = GlobalConfig.defaultRockId;
             float oceanicityFactor = sapi.WorldManager.MapSizeY / 256 * 0.33333f; //At a mapheight of 255, submerge land by up to 85 blocks
 
-            IntDataMap2D landformMap = mapchunk.MapRegion.LandformMap;
+            IntDataMap2D landformMap = mapChunk.MapRegion.LandformMap;
 
             //# of pixels for each chunk (probably 1, 2, or 4) in the landform map
             float chunkPixelSize = landformMap.InnerSize / regionChunkSize;
@@ -417,13 +424,28 @@ namespace Vintagestory.ServerMods
                 }
             }
             validSegments = validSegments.OrderBy(p => RiverMath.DistanceToLine(localStart, p.startPoint, p.endPoint)).ToList();
+            //Optimize the searching
 
-            Parallel.For(0, chunksize * chunksize, new ParallelOptions() { MaxDegreeOfParallelism = maxThreads }, chunkIndex2d => {
+            float[] flowVectorsX = new float[32 * 32];
+            float[] flowVectorsZ = new float[32 * 32];
+            bool riverBank = false;
+
+            Parallel.For(0, chunksize * chunksize, new ParallelOptions() { MaxDegreeOfParallelism = maxThreads }, chunkIndex2d => 
+            {
                 int localX = chunkIndex2d % chunksize;
                 int localZ = chunkIndex2d / chunksize;
 
                 int worldX = chunkX * chunksize + localX;
                 int worldZ = chunkZ * chunksize + localZ;
+
+                //Calculate river data
+                samples[localX, localZ] = riverGenerator.SampleRiver(validSegments, localStart.X + localX, localStart.Y + localZ);
+                if (samples[localX, localZ].flowVectorX > -100)
+                {
+                    flowVectorsX[localZ * 32 + localX] = samples[localX, localZ].flowVectorX;
+                    flowVectorsZ[localZ * 32 + localX] = samples[localX, localZ].flowVectorZ;
+                    riverBank = true;
+                }
 
                 BitArray columnBlockSolidities = columnResults[chunkIndex2d].ColumnBlockSolidities;
 
@@ -507,13 +529,12 @@ namespace Vintagestory.ServerMods
                         noiseSign = columnNoise.NoiseSign(posY, noiseSign);
                     }
 
-                    columnBlockSolidities[posY] = noiseSign > 0;
-                    layerFullyEmpty[posY] = false;
-                    layerFullySolid[posY] = false;
+                    //columnBlockSolidities[posY] = noiseSign > 0;
+                    //layerFullyEmpty[posY] = false;
+                    //layerFullySolid[posY] = false;
 
                     //This massively breaks things right now
 
-                    /*
                     if (noiseSign > 0) //Solid
                     {
                         columnBlockSolidities[posY] = true;
@@ -525,7 +546,11 @@ namespace Vintagestory.ServerMods
                         layerFullySolid[posY] = false; //Thread safe even when this is parallel
                     }
 
-                    */
+                    if (samples[localX, localZ].bankFactor > 0)
+                    {
+                        layerFullyEmpty[posY] = false;
+                        layerFullySolid[posY] = false;
+                    }
                 }
             });
 
@@ -556,10 +581,6 @@ namespace Vintagestory.ServerMods
             if (yTop < seaLevel) yTop = seaLevel;
             yTop++; //Add back one because this is going to be the loop until limit
 
-            float[] flowVectorsX = new float[32 * 32];
-            float[] flowVectorsZ = new float[32 * 32];
-            bool riverBank = false;
-
             //Then for the rest place blocks column by column (from yBase to yTop only; outside that range layers were already placed below, or are fully air above)
             for (int localZ = 0; localZ < chunksize; localZ++)
             {
@@ -569,18 +590,6 @@ namespace Vintagestory.ServerMods
                 {
                     ColumnResult columnResult = columnResults[mapIndex];
                     int waterId = columnResult.WaterBlockID;
-
-                    //2. Get data needed for the entire column here
-                    RiverSample riverSample = riverGenerator.SampleRiver(validSegments, localStart.X + localX, localStart.Y + localZ);
-                    int bankFactorBlocks = (int)(riverSample.bankFactor * aboveSeaLevel);
-                    int baseline = baseSeaLevel + 3;
-
-                    if (riverSample.flowVectorX > -100)
-                    {
-                        flowVectorsX[localZ * 32 + localX] = riverSample.flowVectorX;
-                        flowVectorsZ[localZ * 32 + localX] = riverSample.flowVectorZ;
-                        riverBank = true;
-                    }
 
                     if (yBase < seaLevel && waterId != GlobalConfig.saltWaterBlockId) //Finding the surface water / ice id, relevant only for fresh water and only if there is a non-solid block in the column below sea-level
                     {
@@ -599,8 +608,12 @@ namespace Vintagestory.ServerMods
                         int localY = posY % chunksize;
                         int chunkIndex = ChunkIndex3d(localX, localY, localZ);
 
+                        RiverSample sample = samples[localX, localZ];
+                        int bankFactorBlocks = (int)(sample.bankFactor * aboveSeaLevel);
+                        int baseline = baseSeaLevel + heightBoost;
+
                         //3. Make sure blocks can't be placed in the river area
-                        if (columnResult.ColumnBlockSolidities[posY] && (posY <= baseline - bankFactorBlocks || posY >= baseline + bankFactorBlocks)) //If isSolid
+                        if (columnResult.ColumnBlockSolidities[posY] && (posY <= baseline - bankFactorBlocks || posY >= baseline + bankFactorBlocks * topFactor)) //If isSolid
                         {
                             terrainHeightMap[mapIndex] = (ushort)posY;
                             rainHeightMap[mapIndex] = (ushort)posY;
