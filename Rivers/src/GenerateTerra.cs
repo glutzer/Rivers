@@ -12,20 +12,7 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
-using Vintagestory.ServerMods;
 using Vintagestory.ServerMods.NoObf;
-
-//init
-chunksInPlate = RiverConfig.Loaded.zonesInPlate * RiverConfig.Loaded.zoneSize / 32;
-chunksInZone = RiverConfig.Loaded.zoneSize / 32;
-
-heightBoost = RiverConfig.Loaded.heightBoost;
-topFactor = RiverConfig.Loaded.topFactor;
-
-riverGenerator = new RiverGenerator();
-
-//end init
-
 
 namespace Vintagestory.ServerMods
 {
@@ -38,6 +25,7 @@ namespace Vintagestory.ServerMods
         public int baseSeaLevel;
         public int heightBoost;
         public float topFactor;
+        public RiverSample[,] samples = new RiverSample[32, 32];
 
         public ICoreServerAPI sapi;
 
@@ -303,7 +291,7 @@ namespace Vintagestory.ServerMods
 
         public void Generate(IServerChunk[] chunks, int chunkX, int chunkZ, bool requiresChunkBorderSmoothing)
         {
-            landforms = NoiseLandforms.landforms;
+            landforms = landType.GetStaticField<LandformsWorldProperty>("landforms");
             IMapChunk mapChunk = chunks[0].MapChunk;
 
             int climateUpLeft;
@@ -354,7 +342,7 @@ namespace Vintagestory.ServerMods
 
 
             int rockId = GlobalConfig.defaultRockId;
-            float oceanicityFac = sapi.WorldManager.MapSizeY / 256 * 0.33333f; // At a mapheight of 255, submerge land by up to 85 blocks
+            float oceanicityFac = sapi.WorldManager.MapSizeY / 256 * 0.33333f;
 
             IntDataMap2D landformMap = mapChunk.MapRegion.LandformMap;
             float chunkPixelSize = landformMap.InnerSize / regionChunkSize;
@@ -383,11 +371,56 @@ namespace Vintagestory.ServerMods
             float chunkPixelBlockStep = chunkPixelSize * chunkBlockDelta;
             double verticalNoiseRelativeFrequency = 0.5 / TerraGenConfig.terrainNoiseVerticalScale;
 
+            int plateX = chunkX / chunksInPlate;
+            int plateZ = chunkZ / chunksInPlate;
+            TectonicPlate plate = ObjectCacheUtil.GetOrCreate(sapi, plateX.ToString() + "+" + plateZ.ToString(), () =>
+            {
+                return new TectonicPlate(sapi, plateX, plateZ);
+            });
+            int localChunkX = chunkX % chunksInPlate;
+            int localChunkZ = chunkZ % chunksInPlate;
+            int localZoneX = localChunkX / chunksInZone;
+            int localZoneZ = localChunkZ / chunksInZone;
+            Vec2d plateStart = plate.globalPlateStart;
+            List<TectonicZone> riverZoneList = plate.GetZonesAround(localZoneX, localZoneZ, 2);
+            List<RiverSegment> validSegments = new();
+            Vec2d localStart = new(localChunkX * chunksize, localChunkZ * chunksize);
+            foreach (TectonicZone riverZone in riverZoneList)
+            {
+                foreach (River river in riverZone.rivers)
+                {
+                    if (RiverMath.DistanceToLine(localStart, river.startPoint, river.endPoint) < 400)
+                    {
+                        foreach (RiverSegment segment in river.segments)
+                        {
+                            if (RiverMath.DistanceToLine(localStart, segment.startPoint, segment.endPoint) < 200)
+                            {
+                                validSegments.Add(segment); //Later check for duplicates. If the distance to another segment is too great it shouldn't have to be here
+                            }
+                        }
+                    }
+                }
+            }
+            validSegments = validSegments.OrderBy(p => RiverMath.DistanceToLine(localStart, p.startPoint, p.endPoint)).ToList();
+
+            float[] flowVectorsX = new float[32 * 32];
+            float[] flowVectorsZ = new float[32 * 32];
+            bool riverBank = false;
+
             Parallel.For(0, chunksize * chunksize, new ParallelOptions() { MaxDegreeOfParallelism = maxThreads }, chunkIndex2d => {
                 int localX = chunkIndex2d % chunksize;
                 int localZ = chunkIndex2d / chunksize;
                 int worldX = chunkX * chunksize + localX;
                 int worldZ = chunkZ * chunksize + localZ;
+
+                samples[localX, localZ] = riverGenerator.SampleRiver(validSegments, localStart.X + localX, localStart.Y + localZ);
+                if (samples[localX, localZ].flowVectorX > -100)
+                {
+                    flowVectorsX[localZ * 32 + localX] = samples[localX, localZ].flowVectorX;
+                    flowVectorsZ[localZ * 32 + localX] = samples[localX, localZ].flowVectorZ;
+                    riverBank = true;
+                }
+
                 BitArray columnBlockSolidities = columnResults[chunkIndex2d].columnBlockSolidities;
                 double[] lerpedAmps = tempDataThreadLocal.Value.LerpedAmplitudes;
                 double[] lerpedTh = tempDataThreadLocal.Value.LerpedThresholds;
@@ -452,7 +485,15 @@ namespace Vintagestory.ServerMods
                         noiseSign = columnNoise.NoiseSign(posY, noiseSign);
                     }
 
-                    columnBlockSolidities[posY] = (noiseSign > 0);
+                    columnBlockSolidities[posY] = noiseSign > 0;
+
+                    /*
+                    if (samples[localX, localZ].bankFactor > 0)
+                    {
+                        layerFullyEmpty[posY] = false;
+                        layerFullySolid[posY] = false;
+                    }
+                    */
                 }
             });
 
@@ -473,7 +514,12 @@ namespace Vintagestory.ServerMods
                         int chunkIndex = ChunkIndex3d(localX, localY, localZ);
 
                         ColumnResult columnResult = columnResults[mapIndex];
-                        bool isSolid = columnResult.columnBlockSolidities[posY];
+
+                        RiverSample sample = samples[localX, localZ];
+                        int bankFactorBlocks = (int)(sample.bankFactor * aboveSeaLevel);
+                        int baseline = baseSeaLevel + heightBoost;
+
+                        bool isSolid = columnResult.columnBlockSolidities[posY] && (posY <= baseline - bankFactorBlocks || posY >= baseline + bankFactorBlocks * topFactor);
                         int waterID = columnResult.waterBlockId;
 
                         if (isSolid)
@@ -511,6 +557,12 @@ namespace Vintagestory.ServerMods
                     chunkY++;
                     chunkBlockData = chunks[chunkY].Data;
                 }
+            }
+
+            if (riverBank)
+            {
+                chunks[0].SetModdata<float[]>("flowVectorsX", flowVectorsX);
+                chunks[0].SetModdata<float[]>("flowVectorsZ", flowVectorsZ);
             }
 
             ushort yMax = 0;
@@ -641,76 +693,3 @@ namespace Vintagestory.ServerMods
         }
     }
 }
-
-//In parallel
-samples[localX, localZ] = riverGenerator.SampleRiver(validSegments, localStart.X + localX, localStart.Y + localZ);
-if (samples[localX, localZ].flowVectorX > -100)
-{
-    flowVectorsX[localZ * 32 + localX] = samples[localX, localZ].flowVectorX;
-    flowVectorsZ[localZ * 32 + localX] = samples[localX, localZ].flowVectorZ;
-    riverBank = true;
-}
-
-//end of loop
-if (samples[localX, localZ].bankFactor > 0)
-{
-    layerFullyEmpty[posY] = false;
-    layerFullySolid[posY] = false;
-}
-
-//before loop
-//1. Get data needed for the entire chunk here
-int plateX = chunkX / chunksInPlate;
-int plateZ = chunkZ / chunksInPlate;
-TectonicPlate plate = ObjectCacheUtil.GetOrCreate(sapi, plateX.ToString() + "+" + plateZ.ToString(), () =>
-{
-    return new TectonicPlate(sapi, plateX, plateZ);
-});
-int localChunkX = chunkX % chunksInPlate;
-int localChunkZ = chunkZ % chunksInPlate;
-int localZoneX = localChunkX / chunksInZone;
-int localZoneZ = localChunkZ / chunksInZone;
-Vec2d plateStart = plate.globalPlateStart;
-List<TectonicZone> riverZoneList = plate.GetZonesAround(localZoneX, localZoneZ, 2);
-List<RiverSegment> validSegments = new();
-Vec2d localStart = new(localChunkX * chunksize, localChunkZ * chunksize);
-foreach (TectonicZone riverZone in riverZoneList)
-{
-    foreach (River river in riverZone.rivers)
-    {
-        if (RiverMath.DistanceToLine(localStart, river.startPoint, river.endPoint) < 400)
-        {
-            foreach (RiverSegment segment in river.segments)
-            {
-                if (RiverMath.DistanceToLine(localStart, segment.startPoint, segment.endPoint) < 200)
-                {
-                    validSegments.Add(segment); //Later check for duplicates. If the distance to another segment is too great it shouldn't have to be here
-                }
-            }
-        }
-    }
-}
-validSegments = validSegments.OrderBy(p => RiverMath.DistanceToLine(localStart, p.startPoint, p.endPoint)).ToList();
-//Optimize the searching
-
-float[] flowVectorsX = new float[32 * 32];
-float[] flowVectorsZ = new float[32 * 32];
-bool riverBank = false;
-
-//check
-RiverSample sample = samples[localX, localZ];
-int bankFactorBlocks = (int)(sample.bankFactor * aboveSeaLevel);
-int baseline = baseSeaLevel + heightBoost;
-
-//3. Make sure blocks can't be placed in the river area
-if (columnResult.ColumnBlockSolidities[posY] && (posY <= baseline - bankFactorBlocks || posY >= baseline + bankFactorBlocks * topFactor))
-
-    //before y max
-    if (riverBank)
-    {
-        chunks[0].SetModdata<float[]>("flowVectorsX", flowVectorsX);
-        chunks[0].SetModdata<float[]>("flowVectorsZ", flowVectorsZ);
-    }
-
-// field declaration
-RiverSample[,] samples = new RiverSample[32, 32];
