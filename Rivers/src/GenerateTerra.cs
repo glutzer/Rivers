@@ -25,8 +25,7 @@ topFactor = RiverConfig.Loaded.topFactor;
 riverGenerator = new RiverGenerator();
 
 //end init
-aboveSeaLevel = sapi.WorldManager.MapSizeY - TerraGenConfig.seaLevel;
-baseSeaLevel = TerraGenConfig.seaLevel;
+
 
 namespace Vintagestory.ServerMods
 {
@@ -110,6 +109,8 @@ namespace Vintagestory.ServerMods
             sapi.WorldManager.SetSeaLevel(TerraGenConfig.seaLevel);
         }
 
+        Type landType;
+
         public void InitWorldGen()
         {
             chunksInPlate = RiverConfig.Loaded.zonesInPlate * RiverConfig.Loaded.zoneSize / 32;
@@ -147,19 +148,19 @@ namespace Vintagestory.ServerMods
 
             distort2dx = new SimplexNoise(
                 new double[] { 55, 40, 30, 10 },
-                this.ScaleAdjustedFreqs(new double[] { 1 / 5.0, 1 / 2.50, 1 / 1.250, 1 / 0.65 }, noiseScale),
+                ScaleAdjustedFreqs(new double[] { 1 / 5.0, 1 / 2.50, 1 / 1.250, 1 / 0.65 }, noiseScale),
                 sapi.World.Seed + 9876 + 0
             );
 
             distort2dz = new SimplexNoise(
                 new double[] { 55, 40, 30, 10 },
-                this.ScaleAdjustedFreqs(new double[] { 1 / 5.0, 1 / 2.50, 1 / 1.250, 1 / 0.65 }, noiseScale),
+                ScaleAdjustedFreqs(new double[] { 1 / 5.0, 1 / 2.50, 1 / 1.250, 1 / 0.65 }, noiseScale),
                 sapi.World.Seed + 9876 + 2
             );
 
             geoUpheavalNoise = new NormalizedSimplexNoise(
                 new double[] { 55, 40, 30, 15, 7, 4 },
-                this.ScaleAdjustedFreqs(new double[] {
+                ScaleAdjustedFreqs(new double[] {
                     1.0 / 5.5,
                     1.1 / 2.75,
                     1.2 / 1.375,
@@ -184,6 +185,9 @@ namespace Vintagestory.ServerMods
             borderIndicesByCardinal[Cardinal.SouthEast.Index] = 0 + 0;
             borderIndicesByCardinal[Cardinal.SouthWest.Index] = 0 + chunksize - 1;
             borderIndicesByCardinal[Cardinal.NorthWest.Index] = (chunksize - 1) * chunksize + chunksize - 1;
+
+            aboveSeaLevel = sapi.WorldManager.MapSizeY - TerraGenConfig.seaLevel;
+            baseSeaLevel = TerraGenConfig.seaLevel;
         }
 
         public double[] ScaleAdjustedFreqs(double[] vs, float horizontalScale)
