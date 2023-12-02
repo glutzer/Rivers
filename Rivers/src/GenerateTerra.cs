@@ -8,22 +8,12 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Vintagestory.API.Common;
-using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 using Vintagestory.ServerMods;
 using Vintagestory.ServerMods.NoObf;
-using static Vintagestory.ServerMods.GenerateTerra;
-
-public RiverGenerator riverGenerator;
-public int chunksInPlate;
-public int chunksInZone;
-public int aboveSeaLevel;
-public int baseSeaLevel;
-public int heightBoost;
-public float topFactor;
 
 //init
 chunksInPlate = RiverConfig.Loaded.zonesInPlate * RiverConfig.Loaded.zoneSize / 32;
@@ -42,6 +32,14 @@ namespace Vintagestory.ServerMods
 {
     public class GenerateTerra : ModStdWorldGen
     {
+        public RiverGenerator riverGenerator;
+        public int chunksInPlate;
+        public int chunksInZone;
+        public int aboveSeaLevel;
+        public int baseSeaLevel;
+        public int heightBoost;
+        public float topFactor;
+
         public ICoreServerAPI sapi;
 
         public const double terrainDistortionMultiplier = 4.0;
@@ -114,6 +112,25 @@ namespace Vintagestory.ServerMods
 
         public void InitWorldGen()
         {
+            chunksInPlate = RiverConfig.Loaded.zonesInPlate * RiverConfig.Loaded.zoneSize / 32;
+            chunksInZone = RiverConfig.Loaded.zoneSize / 32;
+
+            heightBoost = RiverConfig.Loaded.heightBoost;
+            topFactor = RiverConfig.Loaded.topFactor;
+
+            riverGenerator = new RiverGenerator();
+
+            Type[] types = AccessTools.GetTypesFromAssembly(Assembly.GetAssembly(typeof(NoiseBase)));
+            foreach (Type type in types)
+            {
+                if (type.Name == "NoiseLandforms")
+                {
+                    landType = type;
+                    break;
+                }
+            }
+            if (landType == null) throw new Exception("NoiseLandforms type not found.");
+
             LoadGlobalConfig(sapi);
             landformMapByRegion.Clear();
 
