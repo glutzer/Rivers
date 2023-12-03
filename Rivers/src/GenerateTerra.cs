@@ -423,13 +423,13 @@ namespace Vintagestory.ServerMods
 
                 BitArray columnBlockSolidities = columnResults[chunkIndex2d].columnBlockSolidities;
                 double[] lerpedAmps = tempDataThreadLocal.Value.LerpedAmplitudes;
-                double[] lerpedTh = tempDataThreadLocal.Value.LerpedThresholds;
+                double[] lerpedThresholds = tempDataThreadLocal.Value.LerpedThresholds;
 
                 WeightedIndex[] columnWeightedIndices = landLerpMap[baseX + localX * chunkPixelBlockStep, baseZ + localZ * chunkPixelBlockStep];
                 for (int i = 0; i < terrainGenOctaves; i++)
                 {
                     lerpedAmps[i] = GameMath.BiLerp(octNoiseX0[i], octNoiseX1[i], octNoiseX2[i], octNoiseX3[i], localX * chunkBlockDelta, localZ * chunkBlockDelta);
-                    lerpedTh[i] = GameMath.BiLerp(octThX0[i], octThX1[i], octThX2[i], octThX3[i], localX * chunkBlockDelta, localZ * chunkBlockDelta);
+                    lerpedThresholds[i] = GameMath.BiLerp(octThX0[i], octThX1[i], octThX2[i], octThX3[i], localX * chunkBlockDelta, localZ * chunkBlockDelta);
                 }
 
                 VectorXZ dist = NewDistortionNoise(worldX, worldZ);
@@ -444,7 +444,7 @@ namespace Vintagestory.ServerMods
 
                 columnResults[chunkIndex2d].waterBlockId = oceanicity > 1 ? GlobalConfig.saltWaterBlockId : GlobalConfig.waterBlockId;
 
-                NewNormalizedSimplexFractalNoise.ColumnNoise columnNoise = terrainNoise.ForColumn(verticalNoiseRelativeFrequency, lerpedAmps, lerpedTh, worldX + distTerrain.X, worldZ + distTerrain.Z);
+                NewNormalizedSimplexFractalNoise.ColumnNoise columnNoise = terrainNoise.ForColumn(verticalNoiseRelativeFrequency, lerpedAmps, lerpedThresholds, worldX + distTerrain.X, worldZ + distTerrain.Z);
 
                 WeightedTaper wTaper = taperMap[chunkIndex2d];
 

@@ -33,6 +33,8 @@ public class TectonicPlate
 
     public int maxZoneTraversal;
 
+    public float riverSpeed;
+
     public TectonicPlate(ICoreServerAPI sapi, int plateX, int plateZ)
     {
         this.sapi = sapi;
@@ -51,6 +53,8 @@ public class TectonicPlate
         segmentOffset = RiverConfig.Loaded.segmentOffset;
 
         maxZoneTraversal = RiverConfig.Loaded.maxZoneTraversal;
+
+        riverSpeed = RiverConfig.Loaded.riverSpeed;
 
         plateSize = zoneSize * zonesInPlate;
         localPlateCenterPosition.X = plateSize / 2;
@@ -407,6 +411,8 @@ public class TectonicPlate
     public void GenerateRiver(int width, int depth, TectonicZone zone, int stage, int threshold, River parentRiver, List<River> riverList, List<TectonicZone> pathedZones)
     {
         threshold--;
+
+        if (parentRiver != null) parentRiver.speed = riverSpeed;
 
         pathedZones.Add(zone);
 

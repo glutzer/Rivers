@@ -34,6 +34,8 @@ public class BEBehaviorWaterWheel : BEBehaviorMPRotor
 
     public float diminishingFactor;
 
+    public float riverSpeed;
+
     public override float GetTorque(long tick, float speed, out float resistance)
     {
         float targetSpeed = TargetSpeed;
@@ -53,6 +55,8 @@ public class BEBehaviorWaterWheel : BEBehaviorMPRotor
     public override void Initialize(ICoreAPI api, JsonObject properties)
     {
         base.Initialize(api, properties);
+
+        riverSpeed = RiverConfig.Loaded.riverSpeed;
 
         sound = new AssetLocation("game:sounds/environment/waterfall");
         if (api.Side == EnumAppSide.Server)
@@ -139,7 +143,7 @@ public class BEBehaviorWaterWheel : BEBehaviorMPRotor
             currentSpeed = -currentSpeed;
         }
 
-        currentSpeed /= 10;
+        currentSpeed /= riverSpeed;
 
         Blockentity.MarkDirty();
     }
