@@ -27,6 +27,8 @@ namespace Vintagestory.ServerMods
         public float topFactor;
         public RiverSample[,] samples = new RiverSample[32, 32];
 
+        public int chunksize = 32;
+
         public ICoreServerAPI sapi;
 
         public const double terrainDistortionMultiplier = 4.0;
@@ -84,12 +86,12 @@ namespace Vintagestory.ServerMods
         {
             sapi = api;
 
-            api.Event.ServerRunPhase(EnumServerRunPhase.ModsAndConfigReady, loadGamePre);
+            api.Event.ServerRunPhase(EnumServerRunPhase.ModsAndConfigReady, LoadGamePre);
             api.Event.InitWorldGenerator(InitWorldGen, "standard");
             api.Event.ChunkColumnGeneration(OnChunkColumnGen, EnumWorldGenPass.Terrain, "standard");
         }
 
-        private void loadGamePre()
+        private void LoadGamePre()
         {
             if (sapi.WorldManager.SaveGame.WorldType != "standard") return;
 
@@ -125,7 +127,6 @@ namespace Vintagestory.ServerMods
 
             maxThreads = Math.Min(Environment.ProcessorCount, sapi.Server.Config.HostedMode ? 4 : 10);
 
-            chunksize = sapi.WorldManager.ChunkSize;
             regionMapSize = (int)Math.Ceiling((double)sapi.WorldManager.MapSizeX / sapi.WorldManager.RegionSize);
             noiseScale = Math.Max(1, sapi.WorldManager.MapSizeY / 256f);
             terrainGenOctaves = TerraGenConfig.GetTerrainOctaveCount(sapi.WorldManager.MapSizeY);

@@ -15,8 +15,8 @@
     public int segmentsInRiver = 2; //How many segments each river is composed of
     public double segmentOffset = 75; //How much to offset each segment along the river line
 
-    public double riverDepth = 0.02; //Based on the square root of the river size
-    public double baseDepth = 0.2; //Minimum depth
+    public double riverDepth = 0.018; //Based on the square root of the river size
+    public double baseDepth = 0.1; //Minimum depth
 
     public int heightBoost = 7;
     public float topFactor = 1;
@@ -25,7 +25,7 @@
     public float riverFrequency = 0.005f;
     public float riverLacunarity = 3;
     public float riverGain = 0.3f;
-    public int riverStrength = 20;
+    public int riverStrength = 15;
 
     public float riverSpeed = 10;
 }

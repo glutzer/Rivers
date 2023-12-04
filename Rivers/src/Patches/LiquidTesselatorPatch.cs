@@ -4,9 +4,6 @@ using System.Reflection.Emit;
 using Vintagestory.API.MathTools;
 using Vintagestory.Client.NoObf;
 
-/// <summary>
-/// Transpiler results not guaranteed.
-/// </summary>
 public class LiquidTesselatorPatch
 {
     public static void TesselateFlow(float[] upFlowVectors, TCTCache vars)
@@ -42,15 +39,11 @@ public class LiquidTesselatorPatch
             List<CodeInstruction> code = new(instructions);
             int insertionIndex = -1;
 
-            //Need label if it needs to jump to something
-            //Label nextLabel = il.DefineLabel();
-
             for (int i = 4; i < code.Count - 4; i++) //-1 since checking i + 1
             {
                 if (code[i].opcode == OpCodes.Ldloc_S && code[i + 1].opcode == OpCodes.Ldnull && code[i + 2].opcode == OpCodes.Call && code[i + 2].operand == AccessTools.Method(typeof(Vec3i), "op_Inequality"))
                 {
                     insertionIndex = i;
-                    //code[i].labels.Add(nextLabel); //+1 since insertion is after
                     break;
                 }
             }

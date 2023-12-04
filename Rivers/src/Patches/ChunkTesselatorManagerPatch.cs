@@ -91,6 +91,6 @@ public class ChunkTesselatorManagerPatch
             varsTwo.flowVectorsZ = bottomChunk.GetModdata<float[]>("flowVectorsZ");
         }
 
-        //bottomChunk = null;
+        bottomChunk = null;
     }
 }
