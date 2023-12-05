@@ -92,7 +92,7 @@ public class EntityBehaviorPhysicsPatch
     [HarmonyPatch("updateBoatAngleAndMotion")]
     public static class updateBoatAngleAndMotionPostfix
     {
-        public static void Postfix(EntityBoat __instance, float dt)
+        public static void Postfix(EntityBoat __instance)
         {
             if (__instance.ForwardSpeed != 0.0)
             {

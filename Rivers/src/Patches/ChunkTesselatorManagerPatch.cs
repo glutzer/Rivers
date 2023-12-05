@@ -52,7 +52,7 @@ public class ChunkTesselatorManagerPatch
             List<CodeInstruction> code = new(instructions);
             int insertionIndex = -1;
 
-            for (int i = 4; i < code.Count - 4; i++) //-1 since checking i + 1
+            for (int i = 4; i < code.Count - 4; i++)
             {
                 if (code[i].opcode == OpCodes.Ldloc_0 && code[i + 1].opcode == OpCodes.Ldc_I4_1 && code[i + 2].opcode == OpCodes.Stfld && code[i + 2].operand == AccessTools.Field(typeof(ClientChunk), "queuedForUpload"))
                 {

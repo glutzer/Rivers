@@ -40,7 +40,7 @@ namespace Vintagestory.ServerMods
         public int maxThreads;
 
         public LandformsWorldProperty landforms;
-        public Dictionary<int, LerpedWeightedIndex2DMap> landformMapByRegion = new Dictionary<int, LerpedWeightedIndex2DMap>(10);
+        public Dictionary<int, LerpedWeightedIndex2DMap> landformMapByRegion = new(10);
         public int regionMapSize;
         public float noiseScale;
         public int terrainGenOctaves = 9;
@@ -51,7 +51,7 @@ namespace Vintagestory.ServerMods
         public NormalizedSimplexNoise geoUpheavalNoise;
         public WeightedTaper[] taperMap;
 
-        public Noise valleyNoise = new Noise(0, 0.0008f, 2);
+        public Noise valleyNoise = new(0, 0.0008f, 2);
         public double maxValleyWidth;
         public double riverFloorVariation;
 
@@ -186,7 +186,7 @@ namespace Vintagestory.ServerMods
             baseSeaLevel = TerraGenConfig.seaLevel;
         }
 
-        public double[] ScaleAdjustedFreqs(double[] vs, float horizontalScale)
+        public static double[] ScaleAdjustedFreqs(double[] vs, float horizontalScale)
         {
             for (int i = 0; i < vs.Length; i++)
             {
@@ -259,13 +259,13 @@ namespace Vintagestory.ServerMods
                                     distToEdge = (float)localZ / chunksize;
                                     break;
                                 case 1:
-                                    distToEdge = (1 - (float)localX / chunksize) + (float)localZ / chunksize;
+                                    distToEdge = 1 - (float)localX / chunksize + (float)localZ / chunksize;
                                     break;
                                 case 2:
                                     distToEdge = 1 - (float)localX / chunksize;
                                     break;
                                 case 3:
-                                    distToEdge = (1 - (float)localX / chunksize) + (1 - (float)localZ / chunksize);
+                                    distToEdge = 1 - (float)localX / chunksize + (1 - (float)localZ / chunksize);
                                     break;
                                 case 4:
                                     distToEdge = 1 - (float)localZ / chunksize;
@@ -412,6 +412,7 @@ namespace Vintagestory.ServerMods
 
             float[] flowVectorsX = new float[32 * 32];
             float[] flowVectorsZ = new float[32 * 32];
+            ushort[] riverDistance = new ushort[32 * 32];
             bool riverBank = false;
 
             Parallel.For(0, chunksize * chunksize, new ParallelOptions() { MaxDegreeOfParallelism = maxThreads }, chunkIndex2d => {
@@ -423,8 +424,9 @@ namespace Vintagestory.ServerMods
                 samples[localX, localZ] = riverGenerator.SampleRiver(validSegments, localStart.X + localX, localStart.Y + localZ);
                 if (samples[localX, localZ].flowVectorX > -100)
                 {
-                    flowVectorsX[localZ * 32 + localX] = samples[localX, localZ].flowVectorX;
-                    flowVectorsZ[localZ * 32 + localX] = samples[localX, localZ].flowVectorZ;
+                    flowVectorsX[chunkIndex2d] = samples[localX, localZ].flowVectorX;
+                    flowVectorsZ[chunkIndex2d] = samples[localX, localZ].flowVectorZ;
+                    riverDistance[chunkIndex2d] = (ushort)samples[localX, localZ].riverDistance;
                     riverBank = true;
                 }
 
@@ -465,8 +467,7 @@ namespace Vintagestory.ServerMods
                 }
                 else
                 {
-                    double riverLerp = RiverMath.InverseLerp(samples[localX, localZ].riverDistance, 0, valleyMax);
-                    riverLerp = Math.Clamp(riverLerp, 0, 1);
+                    double riverLerp = Math.Clamp(RiverMath.InverseLerp(samples[localX, localZ].riverDistance, 0, valleyMax), 0, 1);
                     riverLerp *= riverLerp;
                     yMaximum = (int)(2 + baseSeaLevel + aboveSeaLevel * riverLerp);
                     yMaximum = Math.Max(yMaximum, baseSeaLevel + (int)(riverFloorVariation * valleyNoise.GetPosNoise(worldX, worldZ)));
@@ -589,6 +590,7 @@ namespace Vintagestory.ServerMods
             {
                 chunks[0].SetModdata<float[]>("flowVectorsX", flowVectorsX);
                 chunks[0].SetModdata<float[]>("flowVectorsZ", flowVectorsZ);
+                chunks[0].SetModdata<ushort[]>("riverDistance", riverDistance);
             }
 
             ushort yMax = 0;
