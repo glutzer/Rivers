@@ -31,5 +31,5 @@
     public float riverSpeed = 10;
 
     public double maxValleyWidth = 250;
-    public double riverFloorVariation = 5;
+    public double riverFloorVariation = 3;
 }

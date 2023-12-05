@@ -426,9 +426,10 @@ namespace Vintagestory.ServerMods
                 {
                     flowVectorsX[chunkIndex2d] = samples[localX, localZ].flowVectorX;
                     flowVectorsZ[chunkIndex2d] = samples[localX, localZ].flowVectorZ;
-                    riverDistance[chunkIndex2d] = (ushort)samples[localX, localZ].riverDistance;
                     riverBank = true;
                 }
+
+                riverDistance[chunkIndex2d] = (ushort)samples[localX, localZ].riverDistance;
 
                 BitArray columnBlockSolidities = columnResults[chunkIndex2d].columnBlockSolidities;
                 double[] lerpedAmps = tempDataThreadLocal.Value.LerpedAmplitudes;
@@ -468,9 +469,9 @@ namespace Vintagestory.ServerMods
                 else
                 {
                     double riverLerp = Math.Clamp(RiverMath.InverseLerp(samples[localX, localZ].riverDistance, 0, valleyMax), 0, 1);
-                    riverLerp *= riverLerp;
-                    yMaximum = (int)(2 + baseSeaLevel + aboveSeaLevel * riverLerp);
-                    yMaximum = Math.Max(yMaximum, baseSeaLevel + (int)(riverFloorVariation * valleyNoise.GetPosNoise(worldX, worldZ)));
+                    riverLerp = riverLerp * riverLerp * riverLerp;
+
+                    yMaximum = (int)(riverFloorVariation * valleyNoise.GetPosNoise(worldX, worldZ) + baseSeaLevel + aboveSeaLevel * riverLerp);
                 }
 
                 for (int posY = 1; posY < mapSizeY - 1; posY++)
@@ -590,8 +591,9 @@ namespace Vintagestory.ServerMods
             {
                 chunks[0].SetModdata<float[]>("flowVectorsX", flowVectorsX);
                 chunks[0].SetModdata<float[]>("flowVectorsZ", flowVectorsZ);
-                chunks[0].SetModdata<ushort[]>("riverDistance", riverDistance);
             }
+
+            chunks[0].SetModdata<ushort[]>("riverDistance", riverDistance);
 
             ushort yMax = 0;
             for (int i = 0; i < rainHeightMap.Length; i++)
