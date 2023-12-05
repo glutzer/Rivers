@@ -14,6 +14,7 @@ public class TectonicPlate
     public int zoneSize; //Distance between each zone center
     public int zonesInPlate; //Number of zones in plate
     public int zonePadding; //Minimum distance a center can be from the edge of a cell
+    public int minSegments;
 
     public int plateSize; //Plate size in blocks
     public Vec2d localPlateCenterPosition = new(); //Local center (plate size / 2)
@@ -43,6 +44,7 @@ public class TectonicPlate
         zoneSize = RiverConfig.Loaded.zoneSize;
         zonesInPlate = RiverConfig.Loaded.zonesInPlate;
         zonePadding = RiverConfig.Loaded.zonePadding;
+        minSegments = RiverConfig.Loaded.minSegments;
 
         //River config
         riverGrowth = RiverConfig.Loaded.riverGrowth;
@@ -131,7 +133,7 @@ public class TectonicPlate
                 
                 zone.height = 1 - zoneOceanicity;
 
-                if (zoneOceanicity > 1)
+                if (zoneOceanicity > 1) //1.1 instead of 1 = valid ocean tile
                 {
                     zone.ocean = true;
                     zone.height = -1;
@@ -228,7 +230,7 @@ public class TectonicPlate
                     GenerateRiver(width, depth, zone, maxZoneTraversal, 3, null, riverList, pathedZones);
 
                     //Invalid number of rivers
-                    if (riverList.Count < 3)
+                    if (riverList.Count < minSegments)
                     {
                         foreach (TectonicZone pathedZone in pathedZones)
                         {
@@ -379,7 +381,11 @@ public class TectonicPlate
                     continue;
                 }
 
-                if (segment.parent == segment) continue;
+                if (segment.parent == segment)
+                {
+                    segment.parentInvalid = true;
+                    continue;
+                }
 
                 int index = river.segments.IndexOf(segment);
 

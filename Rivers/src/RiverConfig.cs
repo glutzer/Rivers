@@ -7,6 +7,7 @@
     public int zonesInPlate = 64;
     public int zonePadding = 128;
     public int maxZoneTraversal = 50;
+    public int minSegments = 2;
 
     public int riverGrowth = 2; //Amount river will grow traversing 1 zone
     public int riverSpawnChance = 50; //Chance for river to spawn at the edge of the coast
@@ -28,4 +29,7 @@
     public int riverStrength = 15;
 
     public float riverSpeed = 10;
+
+    public double maxValleyWidth = 250;
+    public double riverFloorVariation = 5;
 }

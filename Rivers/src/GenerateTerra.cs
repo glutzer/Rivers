@@ -51,6 +51,10 @@ namespace Vintagestory.ServerMods
         public NormalizedSimplexNoise geoUpheavalNoise;
         public WeightedTaper[] taperMap;
 
+        public Noise valleyNoise = new Noise(0, 0.0008f, 2);
+        public double maxValleyWidth;
+        public double riverFloorVariation;
+
         public struct ThreadLocalTempData
         {
             public double[] LerpedAmplitudes;
@@ -108,6 +112,9 @@ namespace Vintagestory.ServerMods
 
             heightBoost = RiverConfig.Loaded.heightBoost;
             topFactor = RiverConfig.Loaded.topFactor;
+
+            maxValleyWidth = RiverConfig.Loaded.maxValleyWidth;
+            riverFloorVariation = RiverConfig.Loaded.riverFloorVariation;
 
             riverGenerator = new RiverGenerator();
 
@@ -308,15 +315,15 @@ namespace Vintagestory.ServerMods
             IntDataMap2D climateMap = chunks[0].MapChunk.MapRegion.ClimateMap;
             IntDataMap2D oceanMap = chunks[0].MapChunk.MapRegion.OceanMap;
             int regionChunkSize = sapi.WorldManager.RegionSize / chunksize;
-            float cfac = (float)climateMap.InnerSize / regionChunkSize;
+            float climateFactor = (float)climateMap.InnerSize / regionChunkSize;
 
             int rlX = chunkX % regionChunkSize;
             int rlZ = chunkZ % regionChunkSize;
 
-            climateUpLeft = climateMap.GetUnpaddedInt((int)(rlX * cfac), (int)(rlZ * cfac));
-            climateUpRight = climateMap.GetUnpaddedInt((int)(rlX * cfac + cfac), (int)(rlZ * cfac));
-            climateBotLeft = climateMap.GetUnpaddedInt((int)(rlX * cfac), (int)(rlZ * cfac + cfac));
-            climateBotRight = climateMap.GetUnpaddedInt((int)(rlX * cfac + cfac), (int)(rlZ * cfac + cfac));
+            climateUpLeft = climateMap.GetUnpaddedInt((int)(rlX * climateFactor), (int)(rlZ * climateFactor));
+            climateUpRight = climateMap.GetUnpaddedInt((int)(rlX * climateFactor + climateFactor), (int)(rlZ * climateFactor));
+            climateBotLeft = climateMap.GetUnpaddedInt((int)(rlX * climateFactor), (int)(rlZ * climateFactor + climateFactor));
+            climateBotRight = climateMap.GetUnpaddedInt((int)(rlX * climateFactor + climateFactor), (int)(rlZ * climateFactor + climateFactor));
 
             int oceanUpLeft = 0;
             int oceanUpRight = 0;
@@ -324,11 +331,11 @@ namespace Vintagestory.ServerMods
             int oceanBotRight = 0;
             if (oceanMap != null && oceanMap.Data.Length > 0)
             {
-                float ofac = (float)oceanMap.InnerSize / regionChunkSize;
-                oceanUpLeft = oceanMap.GetUnpaddedInt((int)(rlX * ofac), (int)(rlZ * ofac));
-                oceanUpRight = oceanMap.GetUnpaddedInt((int)(rlX * ofac + ofac), (int)(rlZ * ofac));
-                oceanBotLeft = oceanMap.GetUnpaddedInt((int)(rlX * ofac), (int)(rlZ * ofac + ofac));
-                oceanBotRight = oceanMap.GetUnpaddedInt((int)(rlX * ofac + ofac), (int)(rlZ * ofac + ofac));
+                float oceanFactor = (float)oceanMap.InnerSize / regionChunkSize;
+                oceanUpLeft = oceanMap.GetUnpaddedInt((int)(rlX * oceanFactor), (int)(rlZ * oceanFactor));
+                oceanUpRight = oceanMap.GetUnpaddedInt((int)(rlX * oceanFactor + oceanFactor), (int)(rlZ * oceanFactor));
+                oceanBotLeft = oceanMap.GetUnpaddedInt((int)(rlX * oceanFactor), (int)(rlZ * oceanFactor + oceanFactor));
+                oceanBotRight = oceanMap.GetUnpaddedInt((int)(rlX * oceanFactor + oceanFactor), (int)(rlZ * oceanFactor + oceanFactor));
             }
 
             IntDataMap2D upheavalMap = chunks[0].MapChunk.MapRegion.UpheavelMap;
@@ -341,14 +348,13 @@ namespace Vintagestory.ServerMods
                 upheavalMapBotRight = upheavalMap.GetUnpaddedInt((int)(rlX * ufac + ufac), (int)(rlZ * ufac + ufac));
             }
 
-
             int rockId = GlobalConfig.defaultRockId;
             float oceanicityFac = sapi.WorldManager.MapSizeY / 256 * 0.33333f;
 
             IntDataMap2D landformMap = mapChunk.MapRegion.LandformMap;
             float chunkPixelSize = landformMap.InnerSize / regionChunkSize;
-            float baseX = (chunkX % regionChunkSize) * chunkPixelSize;
-            float baseZ = (chunkZ % regionChunkSize) * chunkPixelSize;
+            float baseX = chunkX % regionChunkSize * chunkPixelSize;
+            float baseZ = chunkZ % regionChunkSize * chunkPixelSize;
 
             LerpedWeightedIndex2DMap landLerpMap = GetOrLoadLerpedLandformMap(chunks[0].MapChunk, chunkX / regionChunkSize, chunkZ / regionChunkSize);
 
@@ -390,11 +396,11 @@ namespace Vintagestory.ServerMods
             {
                 foreach (River river in riverZone.rivers)
                 {
-                    if (RiverMath.DistanceToLine(localStart, river.startPoint, river.endPoint) < 400)
+                    if (RiverMath.DistanceToLine(localStart, river.startPoint, river.endPoint) < maxValleyWidth + 100 + 100) //Consider a river of 100 size, 100 distortion
                     {
                         foreach (RiverSegment segment in river.segments)
                         {
-                            if (RiverMath.DistanceToLine(localStart, segment.startPoint, segment.endPoint) < 200)
+                            if (RiverMath.DistanceToLine(localStart, segment.startPoint, segment.endPoint) < maxValleyWidth + 100 + 100)
                             {
                                 validSegments.Add(segment); //Later check for duplicates. If the distance to another segment is too great it shouldn't have to be here
                             }
@@ -433,21 +439,38 @@ namespace Vintagestory.ServerMods
                     lerpedThresholds[i] = GameMath.BiLerp(octThX0[i], octThX1[i], octThX2[i], octThX3[i], localX * chunkBlockDelta, localZ * chunkBlockDelta);
                 }
 
-                VectorXZ dist = NewDistortionNoise(worldX, worldZ);
-                VectorXZ distTerrain = ApplyIsotropicDistortionThreshold(dist * terrainDistortionMultiplier, terrainDistortionThreshold,
+                VectorXZ distortion = NewDistortionNoise(worldX, worldZ);
+                VectorXZ terrainDistortion = ApplyIsotropicDistortionThreshold(distortion * terrainDistortionMultiplier, terrainDistortionThreshold,
                     terrainDistortionMultiplier * maxDistortionAmount);
-                VectorXZ distGeo = ApplyIsotropicDistortionThreshold(dist * geoDistortionMultiplier, geoDistortionThreshold,
+                VectorXZ upheavalDistortion = ApplyIsotropicDistortionThreshold(distortion * geoDistortionMultiplier, geoDistortionThreshold,
                     geoDistortionMultiplier * maxDistortionAmount);
 
-                float upHeavalStrength = GameMath.BiLerp(upheavalMapUpLeft, upheavalMapUpRight, upheavalMapBotLeft, upheavalMapBotRight, localX * chunkBlockDelta, localZ * chunkBlockDelta);
+                float upheavalStrength = GameMath.BiLerp(upheavalMapUpLeft, upheavalMapUpRight, upheavalMapBotLeft, upheavalMapBotRight, localX * chunkBlockDelta, localZ * chunkBlockDelta);
                 float oceanicity = GameMath.BiLerp(oceanUpLeft, oceanUpRight, oceanBotLeft, oceanBotRight, localX * chunkBlockDelta, localZ * chunkBlockDelta) * oceanicityFac;
-                float distY = oceanicity + ComputeOceanAndUpheavalDistY(upHeavalStrength, worldX, worldZ, distGeo);
+                float distY = oceanicity + ComputeOceanAndUpheavalDistY(upheavalStrength, worldX, worldZ, upheavalDistortion);
 
                 columnResults[chunkIndex2d].waterBlockId = oceanicity > 1 ? GlobalConfig.saltWaterBlockId : GlobalConfig.waterBlockId;
 
-                NewNormalizedSimplexFractalNoise.ColumnNoise columnNoise = terrainNoise.ForColumn(verticalNoiseRelativeFrequency, lerpedAmps, lerpedThresholds, worldX + distTerrain.X, worldZ + distTerrain.Z);
+                NewNormalizedSimplexFractalNoise.ColumnNoise columnNoise = terrainNoise.ForColumn(verticalNoiseRelativeFrequency, lerpedAmps, lerpedThresholds, worldX + terrainDistortion.X, worldZ + terrainDistortion.Z);
 
                 WeightedTaper wTaper = taperMap[chunkIndex2d];
+
+                int yMaximum;
+                double valleyMax = maxValleyWidth * valleyNoise.GetNormalNoise(worldX, worldZ);
+                valleyMax = Math.Max(valleyMax, 0);
+
+                if (valleyMax < 1)
+                {
+                    yMaximum = 1000;
+                }
+                else
+                {
+                    double riverLerp = RiverMath.InverseLerp(samples[localX, localZ].riverDistance, 0, valleyMax);
+                    riverLerp = Math.Clamp(riverLerp, 0, 1);
+                    riverLerp *= riverLerp;
+                    yMaximum = (int)(2 + baseSeaLevel + aboveSeaLevel * riverLerp);
+                    yMaximum = Math.Max(yMaximum, baseSeaLevel + (int)(riverFloorVariation * valleyNoise.GetPosNoise(worldX, worldZ)));
+                }
 
                 for (int posY = 1; posY < mapSizeY - 1; posY++)
                 {
@@ -487,6 +510,8 @@ namespace Vintagestory.ServerMods
                     }
 
                     columnBlockSolidities[posY] = noiseSign > 0;
+
+                    if (posY > yMaximum) columnBlockSolidities[posY] = false;
 
                     /*
                     if (samples[localX, localZ].bankFactor > 0)
