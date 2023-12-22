@@ -20,6 +20,8 @@ public class River : IEquatable<River>
     public RiverSegment[] segments;
     public float speed = 10;
 
+    public bool lake = false;
+
     public River(Vec2d startPoint, Vec2d endPoint)
     {
         this.startPoint = startPoint;

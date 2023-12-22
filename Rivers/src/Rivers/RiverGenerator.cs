@@ -94,6 +94,13 @@ public class RiverGenerator
                 //Calculate bank factor
                 if (distance <= riverSize) //If within bank distance
                 {
+                    if (segment.river.lake)
+                    {
+                        closestLine = -100;
+                        riverSample.flowVectorX = 0;
+                        riverSample.flowVectorZ = 0;
+                    }
+
                     if (distance < closestLine)
                     {
                         //If a bank exists, the flow vector is the same as it
@@ -106,13 +113,9 @@ public class RiverGenerator
 
                         segmentFlowVector.Normalize();
 
-                        //If it's not moving don't add it
-                        if (segment.river.speed > 0)
-                        {
-                            riverSample.flowVectorX = (float)segmentFlowVector.X * segment.river.speed;
-                            riverSample.flowVectorZ = (float)segmentFlowVector.Y * segment.river.speed;
-                        }
-                        
+                        riverSample.flowVectorX = (float)segmentFlowVector.X * segment.river.speed;
+                        riverSample.flowVectorZ = (float)segmentFlowVector.Y * segment.river.speed;
+
                         closestLine = distance;
                     }
 

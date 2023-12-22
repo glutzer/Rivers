@@ -14,7 +14,7 @@ public class BlockLayersPatches
     /// <summary>
     /// Before the XZ loop, retrieve arrays.
     /// In XZ loop, check if either of the arrays != 0. If this is the case raise is 0.
-    /// SUFFIX NULLIFYING VECTORS.
+    /// Nullify in postfix.
     /// </summary>
     [HarmonyPatch(typeof(GenBlockLayers))]
     [HarmonyPatch("OnChunkColumnGeneration")]

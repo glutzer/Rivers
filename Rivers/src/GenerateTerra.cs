@@ -52,6 +52,7 @@ namespace Vintagestory.ServerMods
         public WeightedTaper[] taperMap;
 
         public Noise valleyNoise = new(0, 0.0008f, 2);
+        public Noise floorNoise = new(0, 0.0008f, 1);
         public double maxValleyWidth;
         public double riverFloorVariation;
 
@@ -460,9 +461,9 @@ namespace Vintagestory.ServerMods
 
                 int yMaximum;
                 double valleyMax = maxValleyWidth * valleyNoise.GetNormalNoise(worldX, worldZ);
-                valleyMax = Math.Max(valleyMax, 0);
+                if (valleyMax < 0) valleyMax = 0;
 
-                if (valleyMax < 1)
+                if (valleyMax == 0)
                 {
                     yMaximum = 1000;
                 }
@@ -470,8 +471,7 @@ namespace Vintagestory.ServerMods
                 {
                     double riverLerp = Math.Clamp(RiverMath.InverseLerp(samples[localX, localZ].riverDistance, 0, valleyMax), 0, 1);
                     riverLerp = riverLerp * riverLerp * riverLerp;
-
-                    yMaximum = (int)(riverFloorVariation * valleyNoise.GetPosNoise(worldX, worldZ) + baseSeaLevel + aboveSeaLevel * riverLerp);
+                    yMaximum = (int)(riverFloorVariation * floorNoise.GetPosNoise(worldX, worldZ) + baseSeaLevel + aboveSeaLevel * riverLerp);
                 }
 
                 for (int posY = 1; posY < mapSizeY - 1; posY++)

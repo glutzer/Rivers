@@ -52,6 +52,8 @@ public class RiversMod : ModSystem
     public override void Dispose()
     {
         ChunkTesselatorManagerPatch.bottomChunk = null;
+        BlockLayersPatches.flowVectorsX = null;
+        BlockLayersPatches.flowVectorsZ = null;
         if (patchedLocal)
         {
             harmony.UnpatchAll("rivers");
@@ -59,4 +61,6 @@ public class RiversMod : ModSystem
             patchedLocal = false;
         }
     }
+
+    override 
 }

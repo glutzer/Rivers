@@ -32,4 +32,5 @@
 
     public double maxValleyWidth = 250;
     public double riverFloorVariation = 3;
+    public float oceanThreshold = 30f;
 }

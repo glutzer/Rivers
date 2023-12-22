@@ -27,12 +27,12 @@
       "L": {
         "type": "item",
         "code": "game:resin",
-        "quantity": 16
+        "quantity": 32
       },
       "W": {
         "type": "block",
         "code": "game:debarkedlog-*-ud",
-        "quantity": 64
+        "quantity": 16
       },
       "N": {
         "type": "item",
@@ -82,12 +82,12 @@
       "L": {
         "type": "item",
         "code": "game:resin",
-        "quantity": 8
+        "quantity": 16
       },
       "W": {
         "type": "block",
         "code": "game:debarkedlog-*-ud",
-        "quantity": 32
+        "quantity": 8
       },
       "N": {
         "type": "item",

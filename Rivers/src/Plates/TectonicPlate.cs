@@ -35,6 +35,7 @@ public class TectonicPlate
     public int maxZoneTraversal;
 
     public float riverSpeed;
+    public float oceanThreshold;
 
     public TectonicPlate(ICoreServerAPI sapi, int plateX, int plateZ)
     {
@@ -57,6 +58,7 @@ public class TectonicPlate
         maxZoneTraversal = RiverConfig.Loaded.maxZoneTraversal;
 
         riverSpeed = RiverConfig.Loaded.riverSpeed;
+        oceanThreshold = RiverConfig.Loaded.oceanThreshold;
 
         plateSize = zoneSize * zonesInPlate;
         localPlateCenterPosition.X = plateSize / 2;
@@ -133,7 +135,8 @@ public class TectonicPlate
                 
                 zone.height = 1 - zoneOceanicity;
 
-                if (zoneOceanicity > 1) //1.1 instead of 1 = valid ocean tile
+                //1 oceanicity = saltwater threshold
+                if (zoneOceanicity > oceanThreshold)
                 {
                     zone.ocean = true;
                     zone.height = -1;
@@ -257,7 +260,7 @@ public class TectonicPlate
 
         foreach (River river in riverEndList)
         {
-            AssignRiverSize(river, 2);
+            AssignRiverSize(river, 1);
         }
     }
 
@@ -509,6 +512,8 @@ public class TectonicPlate
         lake.speed = 0;
 
         lake.segments[0].river = lake;
+
+        lake.lake = true;
 
         zone.rivers.Add(lake);
     }
