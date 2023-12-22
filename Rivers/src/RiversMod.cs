@@ -61,6 +61,4 @@ public class RiversMod : ModSystem
             patchedLocal = false;
         }
     }
-
-    override 
 }
