@@ -27,7 +27,7 @@ public class EntityBehaviorPhysicsPatch
 
                 if (flowVectorsX != null)
                 {
-                    float density = 300f / GameMath.Clamp(__instance.entity.MaterialDensity, 750f, 2500f) * (60 * dt); //Calculate density
+                    float density = 300f / GameMath.Clamp(__instance.entity.MaterialDensity, 750f, 2500f) * (60 * dt); // Calculate density.
 
                     float[] flowVectorsZ = chunk.GetModdata<float[]>("flowVectorsZ");
 
@@ -71,7 +71,7 @@ public class EntityBehaviorPhysicsPatch
 
                 if (flowVectorsX != null)
                 {
-                    float density = 300f / GameMath.Clamp(entity.MaterialDensity, 750f, 2500f) * (60 * dt); //Calculate density
+                    float density = 300f / GameMath.Clamp(entity.MaterialDensity, 750f, 2500f) * (60 * dt); // Calculate density.
 
                     float[] flowVectorsZ = chunk.GetModdata<float[]>("flowVectorsZ");
 

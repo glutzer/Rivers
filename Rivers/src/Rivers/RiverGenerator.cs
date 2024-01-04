@@ -35,9 +35,9 @@ public class RiverGenerator
 
         foreach (RiverSegment segment in segments)
         {
-            float riverProjection = RiverMath.GetProjection(point, segment.river.startPoint, segment.river.endPoint); //How far along the main river for size calculation
+            float riverProjection = RiverMath.GetProjection(point, segment.river.startPoint, segment.river.endPoint); // How far along the main river for size calculation.
 
-            double riverSize = GameMath.Lerp(segment.river.startSize, segment.river.endSize, riverProjection); //Size of river
+            float riverSize = GameMath.Lerp(segment.river.startSize, segment.river.endSize, riverProjection); // Size of river.
 
             float segmentProjection = RiverMath.GetProjection(point, segment.startPoint, segment.endPoint);
 
@@ -69,7 +69,7 @@ public class RiverGenerator
                     midPointProjection = 1;
                 }
 
-                //Projections onto lines with equal length are NaN
+                // Projections onto lines with equal length are NaN.
                 if (segmentProjection > 0.5)
                 {
                     if (connector.parentInvalid) midPointProjection = 0;
@@ -91,8 +91,8 @@ public class RiverGenerator
 
                 double distance = RiverMath.DistanceToLine(point, lerpedStart, lerpedEnd);
 
-                //Calculate bank factor
-                if (distance <= riverSize) //If within bank distance
+                // Calculate bank factor.
+                if (distance <= riverSize) // If within bank distance.
                 {
                     if (segment.river.lake)
                     {
@@ -103,11 +103,11 @@ public class RiverGenerator
 
                     if (distance < closestLine)
                     {
-                        //If a bank exists, the flow vector is the same as it
+                        // If a bank exists, the flow vector is the same as it.
                         Vec2d segmentFlowVector = lerpedStart - lerpedEnd;
                         segmentFlowVector.Normalize();
 
-                        //Round the flow to group together sets of water
+                        // Round the flow to group together sets of water.
                         segmentFlowVector.X = Math.Round(segmentFlowVector.X, 1);
                         segmentFlowVector.Y = Math.Round(segmentFlowVector.Y, 1);
 
@@ -124,7 +124,7 @@ public class RiverGenerator
                     double lerp = RiverMath.InverseLerp(distance, riverSize, 0);
                     lerp = Math.Sqrt(1 - Math.Pow(1 - lerp, 2));
 
-                    riverSample.bankFactor = Math.Max(Math.Max(Math.Sqrt(riverSize) * riverDepth, baseDepth) * lerp, riverSample.bankFactor); //Deepest bank
+                    riverSample.bankFactor = Math.Max(Math.Max(Math.Sqrt(riverSize) * riverDepth, baseDepth) * lerp, riverSample.bankFactor); // Deepest bank.
 
                     continue;
                 }
@@ -133,7 +133,7 @@ public class RiverGenerator
 
                 if (distance < 0) distance = 0;
 
-                riverSample.riverDistance = Math.Min(distance, riverSample.riverDistance); //Lowest distance to the edge of a river
+                riverSample.riverDistance = Math.Min(distance, riverSample.riverDistance); // Lowest distance to the edge of a river.
             }
         }
 

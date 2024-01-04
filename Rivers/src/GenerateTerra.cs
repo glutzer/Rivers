@@ -54,6 +54,8 @@ namespace Vintagestory.ServerMods
         public Noise valleyNoise = new(0, 0.0008f, 2);
         public Noise floorNoise = new(0, 0.0008f, 1);
         public double maxValleyWidth;
+
+        public int riverFloorBase;
         public double riverFloorVariation;
 
         public struct ThreadLocalTempData
@@ -108,6 +110,9 @@ namespace Vintagestory.ServerMods
 
         public void InitWorldGen()
         {
+            aboveSeaLevel = sapi.WorldManager.MapSizeY - TerraGenConfig.seaLevel;
+            baseSeaLevel = TerraGenConfig.seaLevel;
+
             chunksInPlate = RiverConfig.Loaded.zonesInPlate * RiverConfig.Loaded.zoneSize / 32;
             chunksInZone = RiverConfig.Loaded.zoneSize / 32;
 
@@ -115,6 +120,8 @@ namespace Vintagestory.ServerMods
             topFactor = RiverConfig.Loaded.topFactor;
 
             maxValleyWidth = RiverConfig.Loaded.maxValleyWidth;
+
+            riverFloorBase = RiverConfig.Loaded.riverFloorBase + baseSeaLevel - 1;
             riverFloorVariation = RiverConfig.Loaded.riverFloorVariation;
 
             riverGenerator = new RiverGenerator();
@@ -182,9 +189,6 @@ namespace Vintagestory.ServerMods
             borderIndicesByCardinal[Cardinal.SouthEast.Index] = 0 + 0;
             borderIndicesByCardinal[Cardinal.SouthWest.Index] = 0 + chunksize - 1;
             borderIndicesByCardinal[Cardinal.NorthWest.Index] = (chunksize - 1) * chunksize + chunksize - 1;
-
-            aboveSeaLevel = sapi.WorldManager.MapSizeY - TerraGenConfig.seaLevel;
-            baseSeaLevel = TerraGenConfig.seaLevel;
         }
 
         public static double[] ScaleAdjustedFreqs(double[] vs, float horizontalScale)
@@ -397,13 +401,13 @@ namespace Vintagestory.ServerMods
             {
                 foreach (River river in riverZone.rivers)
                 {
-                    if (RiverMath.DistanceToLine(localStart, river.startPoint, river.endPoint) < maxValleyWidth + 100 + 100) //Consider a river of 100 size, 100 distortion
+                    if (RiverMath.DistanceToLine(localStart, river.startPoint, river.endPoint) < maxValleyWidth + 100 + 100) // Consider a river of 100 size, 100 distortion.
                     {
                         foreach (RiverSegment segment in river.segments)
                         {
                             if (RiverMath.DistanceToLine(localStart, segment.startPoint, segment.endPoint) < maxValleyWidth + 100 + 100)
                             {
-                                validSegments.Add(segment); //Later check for duplicates. If the distance to another segment is too great it shouldn't have to be here
+                                validSegments.Add(segment); // Later check for duplicates. If the distance to another segment is too great it shouldn't have to be here.
                             }
                         }
                     }
@@ -471,7 +475,7 @@ namespace Vintagestory.ServerMods
                 {
                     double riverLerp = Math.Clamp(RiverMath.InverseLerp(samples[localX, localZ].riverDistance, 0, valleyMax), 0, 1);
                     riverLerp = riverLerp * riverLerp * riverLerp;
-                    yMaximum = (int)(riverFloorVariation * floorNoise.GetPosNoise(worldX, worldZ) + baseSeaLevel + aboveSeaLevel * riverLerp);
+                    yMaximum = (int)(riverFloorBase + riverFloorVariation * floorNoise.GetPosNoise(worldX, worldZ) + aboveSeaLevel * riverLerp);
                 }
 
                 for (int posY = 1; posY < mapSizeY - 1; posY++)

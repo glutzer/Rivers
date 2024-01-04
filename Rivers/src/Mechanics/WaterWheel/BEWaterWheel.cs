@@ -15,7 +15,7 @@ public class BEWaterWheel : BlockEntity
 
         facing = BlockFacing.FromCode(Block.Variant["side"]);
 
-        if (facing == null) facing = BlockFacing.NORTH;
+        facing ??= BlockFacing.NORTH;
 
         RotateY = 0;
         switch (facing.Index)

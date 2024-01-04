@@ -6,12 +6,12 @@ using Vintagestory.API.MathTools;
 /// </summary>
 public class River : IEquatable<River>
 {
-    //World coordinates
+    // World coordinates.
     public Vec2d startPoint;
     public Vec2d endPoint;
 
-    public int endSize = 0;
-    public int startSize = 1;
+    public float endSize = 0;
+    public float startSize = 1;
 
     public River parentRiver;
 
@@ -38,4 +38,6 @@ public class River : IEquatable<River>
     {
         return startPoint.GetHashCode() + endPoint.GetHashCode();
     }
+
+    // Should override equals but I don't feel like testing this.
 }

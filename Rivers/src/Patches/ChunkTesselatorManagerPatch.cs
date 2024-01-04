@@ -5,7 +5,7 @@ using Vintagestory.Client.NoObf;
 
 public class ChunkTesselatorManagerPatch
 {
-    //Set this to use an extended version of the cache
+    // Set this to use an extended version of the cache.
     [HarmonyPatch(typeof(ChunkTesselator), "Start")]
     public static class StartPrefix
     {

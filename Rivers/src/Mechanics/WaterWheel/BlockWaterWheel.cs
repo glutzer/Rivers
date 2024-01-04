@@ -12,7 +12,7 @@ public class BlockWaterWheel : BlockMPBase
 
     public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
     {
-        return face == powerOutFacing || face.Opposite == powerOutFacing; //Provide power to both sides
+        return face == powerOutFacing || face.Opposite == powerOutFacing; // Provide power to both sides.
     }
 
     public override void OnLoaded(ICoreAPI api)
@@ -23,18 +23,18 @@ public class BlockWaterWheel : BlockMPBase
 
     public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
     {
-        //Check if placing is allowed
+        // Check if placing is allowed.
         if (!CanPlaceBlock(world, byPlayer, blockSel, ref failureCode)) return false;
 
         foreach (BlockFacing face in BlockFacing.HORIZONTALS)
         {
             BlockPos pos = blockSel.Position.AddCopy(face);
 
-            //If there's a mechanical power block at the side
+            // If there's a mechanical power block at the side.
             if (world.BlockAccessor.GetBlock(pos) is IMechanicalPowerBlock block)
             {
 
-                //If the block can connect to this face
+                // If the block can connect to this face.
                 if (block.HasMechPowerConnectorAt(world, pos, face.Opposite))
                 {
                     Block toPlaceBlock = world.GetBlock(new AssetLocation("waterwheels:" + FirstCodePart() + "-" + Variant["size"] + "-" + face.Opposite.Code));

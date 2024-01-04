@@ -51,7 +51,7 @@
     "height": 3,
     "output": {
       "type": "block",
-      "code": "waterwheels:waterwheel-large-north"
+      "code": "waterwheels:riverwaterwheel-large-north"
     }
   },
   {
@@ -106,7 +106,7 @@
     "height": 3,
     "output": {
       "type": "block",
-      "code": "waterwheels:waterwheel-small-north"
+      "code": "waterwheels:riverwaterwheel-small-north"
     }
   }
 ]

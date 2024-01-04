@@ -15,9 +15,9 @@ public class RiversMod : ModSystem
 
     public override void Start(ICoreAPI api)
     {
-        api.RegisterBlockClass("BlockWaterWheel", typeof(BlockWaterWheel));
-        api.RegisterBlockEntityClass("BEWaterWheel", typeof(BEWaterWheel));
-        api.RegisterBlockEntityBehaviorClass("BEBehaviorWaterWheel", typeof(BEBehaviorWaterWheel));
+        api.RegisterBlockClass("BlockRiverWaterWheel", typeof(BlockWaterWheel));
+        api.RegisterBlockEntityClass("BERiverWaterWheel", typeof(BEWaterWheel));
+        api.RegisterBlockEntityBehaviorClass("BEBehaviorRiverWaterWheel", typeof(BEBehaviorWaterWheel));
     }
 
     public override void StartPre(ICoreAPI api)

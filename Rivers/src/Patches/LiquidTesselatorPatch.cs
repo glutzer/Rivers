@@ -10,10 +10,10 @@ public class LiquidTesselatorPatch
     {
         TCTCacheTwo varsTwo = (TCTCacheTwo)vars;
 
-        if (varsTwo.flowVectorsX != null) //Check if the chunk can even have a river
+        if (varsTwo.flowVectorsX != null) // Check if the chunk can even have a river.
         {
-            float xFlow = varsTwo.flowVectorsX[vars.posZ % 32 * 32 + vars.posX % 32]; //These are normalized vectors multiplied by the speed?
-            float zFlow = varsTwo.flowVectorsZ[vars.posZ % 32 * 32 + vars.posX % 32]; //Z * 32 + X, 2d index
+            float xFlow = varsTwo.flowVectorsX[vars.posZ % 32 * 32 + vars.posX % 32]; // These are normalized vectors multiplied by the speed?
+            float zFlow = varsTwo.flowVectorsZ[vars.posZ % 32 * 32 + vars.posX % 32]; // Z * 32 + X, 2d index.
 
             if (xFlow != 0 || zFlow != 0)
             {
@@ -39,7 +39,7 @@ public class LiquidTesselatorPatch
             List<CodeInstruction> code = new(instructions);
             int insertionIndex = -1;
 
-            for (int i = 4; i < code.Count - 4; i++) //-1 since checking i + 1
+            for (int i = 4; i < code.Count - 4; i++) // -1 since checking i + 1.
             {
                 if (code[i].opcode == OpCodes.Ldloc_S && code[i + 1].opcode == OpCodes.Ldnull && code[i + 2].opcode == OpCodes.Call && code[i + 2].operand == AccessTools.Method(typeof(Vec3i), "op_Inequality"))
                 {

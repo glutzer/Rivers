@@ -6,7 +6,7 @@ public class RiverSegment
     public Vec2d startPoint;
     public Vec2d endPoint;
 
-    public Vec2d midPoint; //For bezier
+    public Vec2d midPoint; // For bezier.
 
     public River river;
 

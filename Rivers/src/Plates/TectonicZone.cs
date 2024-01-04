@@ -3,16 +3,16 @@ using Vintagestory.API.MathTools;
 
 public class TectonicZone
 {
-    //Center of region
+    // Center of region.
     public Vec2d localZoneCenterPosition = new();
 
-    //Relative height
+    // Relative height.
     public double height;
 
-    //All rivers, only if it starts in that zone
+    // All rivers, only if it starts in that zone.
     public List<River> rivers = new();
 
-    //River generation info
+    // River generation info.
     public int xIndex = 0;
     public int zIndex = 0;
     public bool pathedTo = false;

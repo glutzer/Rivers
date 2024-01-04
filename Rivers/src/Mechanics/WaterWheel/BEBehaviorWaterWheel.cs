@@ -18,23 +18,26 @@ public class BEBehaviorWaterWheel : BEBehaviorMPRotor
         return currentSpeed * 0.05f;
     }
 
-    //How much strain this being on the network applies
+    // How much strain this being on the network applies.
     protected override float Resistance => 1f;
 
-    //How quickly the speed ramps up
+    // How quickly the speed ramps up.
     protected override double AccelerationFactor => 0.5;
 
-    //Will accelerate up until it reaches this point
-    protected override float TargetSpeed => currentSpeed * Block.Attributes["speed"].AsFloat();
+    // Will accelerate up until it reaches this point.
+    protected override float TargetSpeed => currentSpeed * Block.Attributes["speed"].AsFloat() * speedMultiplier;
 
-    //How much torque will be applied, scaling linearly with speed
-    protected override float TorqueFactor => currentSpeed * Block.Attributes["torque"].AsFloat();
+    // How much torque will be applied, scaling linearly with speed.
+    protected override float TorqueFactor => currentSpeed * Block.Attributes["torque"].AsFloat() * torqueMultiplier;
 
     public bool invert = false;
 
     public float diminishingFactor;
 
     public float riverSpeed;
+
+    public float speedMultiplier = 1;
+    public float torqueMultiplier = 1;
 
     public override float GetTorque(long tick, float speed, out float resistance)
     {
@@ -58,6 +61,9 @@ public class BEBehaviorWaterWheel : BEBehaviorMPRotor
 
         riverSpeed = RiverConfig.Loaded.riverSpeed;
 
+        speedMultiplier = RiverConfig.Loaded.wheelSpeedMultiplier;
+        torqueMultiplier = RiverConfig.Loaded.wheelTorqueMultiplier;
+
         sound = new AssetLocation("game:sounds/environment/waterfall");
         if (api.Side == EnumAppSide.Server)
         {
@@ -71,7 +77,7 @@ public class BEBehaviorWaterWheel : BEBehaviorMPRotor
         IWorldChunk chunk = sapi.World.BlockAccessor.GetChunk(Pos.X / 32, 0, Pos.Z / 32);
         int index2d = Pos.Z % 32 * 32 + Pos.X % 32;
 
-        //Check if there's water below
+        // Check if there's water below.
         bool water = false;
         BlockPos tempPos = Pos.Copy();
         for (int i = 0; i < Block.Attributes["radius"].AsInt(); i++)
@@ -82,7 +88,8 @@ public class BEBehaviorWaterWheel : BEBehaviorMPRotor
                 water = true;
             }
         }
-        if (water == false || sapi.World.BlockAccessor.GetBlock(Pos, BlockLayersAccess.Fluid).LiquidLevel == 7) //If there's no water below it's radius or water inside it don't move
+
+        if (water == false || sapi.World.BlockAccessor.GetBlock(Pos, BlockLayersAccess.Fluid).LiquidLevel == 7) // If there's no water below it's radius or water inside it don't move.
         {
             currentSpeed = 0;
             invert = false;
@@ -117,7 +124,7 @@ public class BEBehaviorWaterWheel : BEBehaviorMPRotor
 
         if (rot == 0)
         {
-            currentSpeed = vectorsX[index2d]; //Correct positive
+            currentSpeed = vectorsX[index2d]; // Correct positive.
             invert = true;
         }
         else if (rot == 180)
@@ -127,7 +134,7 @@ public class BEBehaviorWaterWheel : BEBehaviorMPRotor
         }
         else if (rot == 90)
         {
-            currentSpeed = chunk.GetModdata<float[]>("flowVectorsZ")[index2d]; //Correct positive
+            currentSpeed = chunk.GetModdata<float[]>("flowVectorsZ")[index2d]; // Correct positive.
             invert = false;
         }
         else if (rot == 270)
@@ -136,7 +143,7 @@ public class BEBehaviorWaterWheel : BEBehaviorMPRotor
             invert = true;
         }
 
-        //Go in the other direction if it's flowing the other way
+        // Go in the other direction if it's flowing the other way.
         if (currentSpeed < 0)
         {
             invert = !invert;

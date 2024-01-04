@@ -1,8 +1,8 @@
 ﻿{
-  "code": "waterwheel",
-  "class": "BlockWaterWheel",
-  "entityClass": "BEWaterWheel",
-  "entityBehaviors": [ { "name": "BEBehaviorWaterWheel" } ],
+  "code": "riverwaterwheel",
+  "class": "BlockRiverWaterWheel",
+  "entityClass": "BERiverWaterWheel",
+  "entityBehaviors": [ { "name": "BEBehaviorRiverWaterWheel" } ],
   "behaviors": [
     { "name": "HorizontalOrientable" }
   ],
@@ -67,7 +67,7 @@
   "drops": [
     {
       "type": "block",
-      "code": "waterwheel-{size}-north"
+      "code": "riverwaterwheel-{size}-north"
     }
   ],
   "resistance": 4,
