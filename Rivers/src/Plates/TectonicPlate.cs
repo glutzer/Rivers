@@ -24,7 +24,7 @@ public class TectonicPlate
 
     public LCGRandom rand;
 
-    // CONFIG.
+    // Config.
     public float riverGrowth;
     public int riverSpawnChance;
     public int riverSplitChance;
@@ -36,6 +36,8 @@ public class TectonicPlate
 
     public float riverSpeed;
     public float oceanThreshold;
+
+    public List<RiverSegment> riverStarts = new();
 
     public TectonicPlate(ICoreServerAPI sapi, int plateX, int plateZ)
     {
@@ -348,6 +350,8 @@ public class TectonicPlate
                     }
                     else
                     {
+                        // This river is the mouth at the ocean.
+                        riverStarts.Add(river.segments[i]);
                         river.segments[i].parent = river.segments[i];
                     }
 

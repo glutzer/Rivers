@@ -4,6 +4,7 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.GameContent.Mechanics;
+using Vintagestory.ServerMods;
 
 public class BEBehaviorWaterWheel : BEBehaviorMPRotor
 {
@@ -39,6 +40,8 @@ public class BEBehaviorWaterWheel : BEBehaviorMPRotor
     public float speedMultiplier = 1;
     public float torqueMultiplier = 1;
 
+    public int seaLevel;
+
     public override float GetTorque(long tick, float speed, out float resistance)
     {
         float targetSpeed = TargetSpeed;
@@ -70,6 +73,8 @@ public class BEBehaviorWaterWheel : BEBehaviorMPRotor
             sapi = api as ICoreServerAPI;
             Blockentity.RegisterGameTickListener(UpdateWaterWheel, 1000);
         }
+
+        seaLevel = TerraGenConfig.seaLevel;
     }
 
     public void UpdateWaterWheel(float dt)
@@ -89,7 +94,9 @@ public class BEBehaviorWaterWheel : BEBehaviorMPRotor
             }
         }
 
-        if (water == false || sapi.World.BlockAccessor.GetBlock(Pos, BlockLayersAccess.Fluid).LiquidLevel == 7) // If there's no water below it's radius or water inside it don't move.
+        // Hard-coded sea-level + 2 so people can't put waterwheels in the sky.
+        // If people want water wheels deep underground, yeah go ahead sport.
+        if (water == false || Pos.Y > seaLevel + 2 || sapi.World.BlockAccessor.GetBlock(Pos, BlockLayersAccess.Fluid).LiquidLevel == 7) // If there's no water below it's radius or water inside it don't move.
         {
             currentSpeed = 0;
             invert = false;

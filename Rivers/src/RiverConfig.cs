@@ -16,7 +16,7 @@
     public int segmentsInRiver = 2; // How many segments each river is composed of.
     public double segmentOffset = 75; // How much to offset each segment along the river line.
 
-    public double riverDepth = 0.018; // Based on the square root of the river size.
+    public double riverDepth = 0.025; // Based on the square root of the river size.
     public double baseDepth = 0.1; // Minimum depth.
 
     public int heightBoost = 7;
@@ -28,15 +28,19 @@
     public float riverGain = 0.3f;
     public int riverStrength = 15;
 
-    public float riverSpeed = 10;
+    public float riverSpeed = 5;
 
-    public double maxValleyWidth = 250;
+    public double maxValleyWidth = 200;
 
     public int riverFloorBase = 0;
-    public double riverFloorVariation = 2;
+    public double riverFloorVariation = 3;
 
     public float oceanThreshold = 30f;
 
-    public float wheelSpeedMultiplier = 1;
+    public float wheelSpeedMultiplier = 0.5f;
     public float wheelTorqueMultiplier = 1;
+
+    public bool removeGravityBlocks = true;
+
+    public bool clientParticles = true;
 }

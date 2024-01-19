@@ -153,6 +153,6 @@ public struct RiverSample
     {
         riverDistance = 5000;
         bankFactor = 0;
-        flowVectorX = -100; //Initialized at -100 for checks. Nothing will move this fast
+        flowVectorX = -100; // Initialized at -100 for checks. Nothing will move this fast.
     }
 }

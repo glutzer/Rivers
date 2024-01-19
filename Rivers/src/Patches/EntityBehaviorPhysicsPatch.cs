@@ -13,6 +13,8 @@ using Vintagestory.GameContent;
 /// </summary>
 public class EntityBehaviorPhysicsPatch
 {
+    // Passive physics for items disabled.
+    /*
     [HarmonyPatch(typeof(EntityBehaviorPassivePhysics))]
     [HarmonyPatch("DoPhysics")]
     public static class DoPhysicsPrefix
@@ -43,7 +45,9 @@ public class EntityBehaviorPhysicsPatch
             return localZ * 32 + localX;
         }
     }
+    */
 
+    // Really laggy but if it's just controlled entities it's fine.
     [HarmonyPatch(typeof(EntityInLiquid))]
     [HarmonyPatch("DoApply")]
     public static class DoApplyPrefix
@@ -90,7 +94,7 @@ public class EntityBehaviorPhysicsPatch
 
     [HarmonyPatch(typeof(EntityBoat))]
     [HarmonyPatch("updateBoatAngleAndMotion")]
-    public static class updateBoatAngleAndMotionPostfix
+    public static class UpdateBoatAngleAndMotionPostfix
     {
         public static void Postfix(EntityBoat __instance)
         {

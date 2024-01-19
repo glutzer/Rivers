@@ -1,0 +1,11 @@
+[
+  {
+    "op": "add",
+    "path": "/behaviors/-",
+    "value": {
+      "name": "riverblock"
+    },
+    "file": "game:blocktypes/liquid/water.json",
+    "side": "Universal"
+  }
+]
