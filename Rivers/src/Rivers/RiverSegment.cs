@@ -3,22 +3,23 @@ using Vintagestory.API.MathTools;
 
 public class RiverSegment
 {
-    public Vec2d startPoint;
-    public Vec2d endPoint;
+    public Vec2d startPos;
+    public Vec2d endPos;
 
     public Vec2d midPoint; // For bezier.
 
-    public River river;
+    public RiverNode riverNode;
 
     public RiverSegment parent;
     public List<RiverSegment> children = new();
+    public RiverSegment[] childrenArray;
 
     public bool parentInvalid = false;
 
-    public RiverSegment(Vec2d startPoint, Vec2d endPoint, Vec2d midPoint)
+    public RiverSegment(Vec2d startPos, Vec2d endPos, Vec2d midPoint)
     {
-        this.startPoint = startPoint;
-        this.endPoint = endPoint;
+        this.startPos = startPos;
+        this.endPos = endPos;
         this.midPoint = midPoint;
     }
 

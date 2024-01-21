@@ -2,7 +2,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -23,6 +22,7 @@ public class NewGenTerra : ModStdWorldGen
     // River fields.
     public RiverGenerator riverGenerator;
     public RiverSample[,] samples = new RiverSample[32, 32];
+
     public int chunksInPlate;
     public int chunksInZone;
     public int aboveSeaLevel;
@@ -124,7 +124,8 @@ public class NewGenTerra : ModStdWorldGen
         maxValleyWidth = RiverConfig.Loaded.maxValleyWidth;
         riverFloorBase = RiverConfig.Loaded.riverFloorBase + baseSeaLevel - 1;
         riverFloorVariation = RiverConfig.Loaded.riverFloorVariation;
-        riverGenerator = new RiverGenerator();
+
+        riverGenerator = new RiverGenerator(sapi);
 
         // Reflection for landforms.
         Type[] types = AccessTools.GetTypesFromAssembly(Assembly.GetAssembly(typeof(NoiseBase)));
@@ -401,6 +402,7 @@ public class NewGenTerra : ModStdWorldGen
         // Get cached plate.
         int plateX = chunkX / chunksInPlate;
         int plateZ = chunkZ / chunksInPlate;
+
         TectonicPlate plate = ObjectCacheUtil.GetOrCreate(sapi, plateX.ToString() + "+" + plateZ.ToString(), () =>
         {
             return new TectonicPlate(sapi, plateX, plateZ);
@@ -410,28 +412,20 @@ public class NewGenTerra : ModStdWorldGen
         int localChunkX = chunkX % chunksInPlate;
         int localChunkZ = chunkZ % chunksInPlate;
 
-        // Get zone relative to plate.
-        int localZoneX = localChunkX / chunksInZone;
-        int localZoneZ = localChunkZ / chunksInZone;
-
-        // Get point where plate starts.
-        Vec2d plateStart = plate.globalPlateStart;
-
-        // Get 25x25 zones around zone.
-        List<TectonicZone> riverZoneList = plate.GetZonesAround(localZoneX, localZoneZ, 2);
-
-        // Get every segment that could possibly be in range.
         List<RiverSegment> validSegments = new();
-        Vec2d localStart = new(localChunkX * chunksize, localChunkZ * chunksize);
-        foreach (TectonicZone riverZone in riverZoneList)
+        Vec2d localStart = new((localChunkX * chunksize) + 16, (localChunkZ * chunksize) + 16);
+
+        foreach (River river in plate.rivers)
         {
-            foreach (River river in riverZone.rivers)
+            if (localStart.DistanceTo(river.startPos) > river.radius) continue;
+
+            foreach (RiverNode node in river.nodes)
             {
-                if (RiverMath.DistanceToLine(localStart, river.startPoint, river.endPoint) < maxValleyWidth + 100 + 100) // Consider a river of 100 size, 100 distortion.
+                if (RiverMath.DistanceToLine(localStart, node.startPos, node.endPos) < maxValleyWidth) // Consider a river of 100 size, 100 distortion.
                 {
-                    foreach (RiverSegment segment in river.segments)
+                    foreach (RiverSegment segment in node.segments)
                     {
-                        if (RiverMath.DistanceToLine(localStart, segment.startPoint, segment.endPoint) < maxValleyWidth + 100 + 100)
+                        if (RiverMath.DistanceToLine(localStart, segment.startPos, segment.endPos) - segment.riverNode.startSize < maxValleyWidth + 128)
                         {
                             validSegments.Add(segment); // Later check for duplicates. If the distance to another segment is too great it shouldn't have to be here.
                         }
@@ -440,14 +434,23 @@ public class NewGenTerra : ModStdWorldGen
             }
         }
 
-        // Order by distance.
-        validSegments = validSegments.OrderBy(p => RiverMath.DistanceToLine(localStart, p.startPoint, p.endPoint)).ToList();
+        double maxWidth = 0;
+
+        double[] valleyArray = new double[32 * 32];
 
         if (validSegments.Count > 0)
         {
-            double shortestDistance = RiverMath.DistanceToLine(localStart, validSegments[0].startPoint, validSegments[0].endPoint);
-            validSegments = validSegments.Where(p => RiverMath.DistanceToLine(localStart, p.startPoint, p.endPoint) < shortestDistance + 100).ToList();
+            for (int x = 0; x < 32; x++)
+            {
+                for (int z = 0; z < 32; z++)
+                {
+                    valleyArray[(z * 32) + x] = maxValleyWidth * valleyNoise.GetNormalNoise((chunkX * 32) + x, (chunkZ * 32) + z);
+                    maxWidth = Math.Max(maxWidth, valleyArray[(z * 32) + x]);
+                }
+            }
         }
+
+        RiverSegment[] validArray = riverGenerator.ValidateSegments(validSegments.ToArray(), maxWidth, localStart.X + 16, localStart.Y + 16);
 
         float[] flowVectorsX = new float[32 * 32];
         float[] flowVectorsZ = new float[32 * 32];
@@ -467,7 +470,7 @@ public class NewGenTerra : ModStdWorldGen
             // INITIAL RIVER CALCULATION ----------
 
             // Sample river.
-            samples[localX, localZ] = riverGenerator.SampleRiver(validSegments, localStart.X + localX, localStart.Y + localZ);
+            samples[localX, localZ] = riverGenerator.SampleRiver(validArray, localStart.X + localX, localStart.Y + localZ);
 
             // Determine if water is flowing there and add it.
             if (samples[localX, localZ].flowVectorX > -100)
@@ -482,7 +485,7 @@ public class NewGenTerra : ModStdWorldGen
 
             // Maximum height the point at this valley can be.
             int yMaximum;
-            double valleyMax = maxValleyWidth * valleyNoise.GetNormalNoise(worldX, worldZ);
+            double valleyMax = valleyArray[(localZ * 32) + localX];
 
             if (riverDistance[chunkIndex2d] < valleyMax + 10)
             {
@@ -494,9 +497,9 @@ public class NewGenTerra : ModStdWorldGen
                 }
                 else
                 {
-                    double riverLerp = Math.Clamp(RiverMath.InverseLerp(samples[localX, localZ].riverDistance, 0, valleyMax), 0, 1);
-                    riverLerp = riverLerp * riverLerp * riverLerp;
-                    yMaximum = (int)(riverFloorBase + riverFloorVariation * floorNoise.GetPosNoise(worldX, worldZ) + aboveSeaLevel * riverLerp);
+                    double riverLerp = Math.Clamp(RiverMath.InverseLerp(samples[localX, localZ].riverDistance + 1, 0, valleyMax), 0, 1);
+                    riverLerp *= riverLerp;
+                    yMaximum = (int)(riverFloorBase + (riverFloorVariation * floorNoise.GetPosNoise(worldX, worldZ)) + (aboveSeaLevel * riverLerp));
                 }
             }
             else
@@ -686,11 +689,12 @@ public class NewGenTerra : ModStdWorldGen
 
                 // RIVER DATA ----------
                 RiverSample sample = samples[localX, localZ];
-                int bankFactorBlocks = (int)(sample.bankFactor * aboveSeaLevel);
-                int baseline = baseSeaLevel + heightBoost;
 
                 if (sample.riverDistance <= 1)
                 {
+                    int bankFactorBlocks = (int)(sample.bankFactor * aboveSeaLevel);
+                    int baseline = baseSeaLevel + heightBoost;
+
                     for (int posY = yBase; posY < yTop; posY++)
                     {
                         int localY = posY % chunkSize;
@@ -698,7 +702,7 @@ public class NewGenTerra : ModStdWorldGen
                         // For every single block in the chunk, the cost is checking one of these.
                         // This is really laggy and bad Lol.
 
-                        if (columnResult.ColumnBlockSolidities[posY] && (posY <= baseline - bankFactorBlocks || posY >= baseline + bankFactorBlocks * topFactor)) // If isSolid.
+                        if (columnResult.ColumnBlockSolidities[posY] && (posY <= baseline - bankFactorBlocks || posY >= baseline + (bankFactorBlocks * topFactor))) // If isSolid.
                         {
                             terrainHeightMap[mapIndex] = (ushort)posY;
                             rainHeightMap[mapIndex] = (ushort)posY;
@@ -771,7 +775,7 @@ public class NewGenTerra : ModStdWorldGen
             chunks[0].SetModdata("flowVectorsX", flowVectorsX);
             chunks[0].SetModdata("flowVectorsZ", flowVectorsZ);
         }
-        chunks[0].SetModdata("riverDistance", riverDistance);
+        chunks[0].MapChunk.SetModdata("riverDistance", riverDistance);
 
         ushort yMax = 0;
         for (int i = 0; i < rainHeightMap.Length; i++)

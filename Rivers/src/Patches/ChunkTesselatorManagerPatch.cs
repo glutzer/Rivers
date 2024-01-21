@@ -89,6 +89,7 @@ public class ChunkTesselatorManagerPatch
         {
             varsTwo.flowVectorsX = bottomChunk.GetModdata<float[]>("flowVectorsX");
             varsTwo.flowVectorsZ = bottomChunk.GetModdata<float[]>("flowVectorsZ");
+            varsTwo.riverSpeed = RiversMod.riverSpeed;
         }
 
         bottomChunk = null;

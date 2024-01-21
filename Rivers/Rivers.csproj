@@ -53,15 +53,20 @@
   <Content Include="assets\**">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
   </Content>
+  <None Remove="assets\game\blocktypes\liquid\water.json" />
   <None Remove="assets\waterwheels\lang\ja.json" />
-  <None Remove="assets\waterwheels\patches\water.json" />
   <None Remove="assets\waterwheels\recipes\grid\waterwheels.json" />
   <None Remove="assets\waterwheels\shapes\block\wood\waterwheel-base.json" />
   <None Remove="assets\waterwheels\shapes\block\wood\waterwheellarge.json" />
   <None Remove="assets\waterwheels\shapes\block\wood\waterwheelsmall.json" />
+  <None Remove="assets\waterwheels\worldgen\blockpatches\saltseaweed.json" />
   <Content Include="modinfo.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
   </Content>
+</ItemGroup>
+
+<ItemGroup>
+  <Folder Include="assets\waterwheels\patches\" />
 </ItemGroup>
 
 </Project>

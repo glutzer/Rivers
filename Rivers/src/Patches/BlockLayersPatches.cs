@@ -8,8 +8,7 @@ using Vintagestory.ServerMods;
 
 public class BlockLayersPatches
 {
-    public static float[] flowVectorsX;
-    public static float[] flowVectorsZ;
+    public static ushort[] distances;
 
     /// <summary>
     /// Before the XZ loop, retrieve arrays.
@@ -94,23 +93,26 @@ public class BlockLayersPatches
         [HarmonyPostfix]
         public static void Postfix()
         {
-            flowVectorsX = null;
-            flowVectorsZ = null;
+            //distances = null;
         }
     }
 
     public static void SetVectors(IServerChunk[] chunks)
     {
-        flowVectorsX = chunks[0].GetModdata<float[]>("flowVectorsX");
-        flowVectorsZ = chunks[0].GetModdata<float[]>("flowVectorsZ");
+        //distances = chunks[0].MapChunk.GetModdata<ushort[]>("riverDistance");
     }
 
+    // Disable Y level boost in dry areas.
     public static bool IsRiver(int localX, int localZ)
     {
-        if (flowVectorsX == null) return false;
+        return true;
 
-        if (flowVectorsX[localZ * 32 + localX] != 0 || flowVectorsZ[localZ * 32 + localX] != 0) return true;
+        /*
+        if (distances == null) return false;
+
+        if (distances[(localZ * 32) + localX] == 0) return true;
 
         return false;
+        */
     }
 }

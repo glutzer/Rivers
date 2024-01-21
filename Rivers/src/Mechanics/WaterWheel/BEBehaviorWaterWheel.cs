@@ -80,7 +80,7 @@ public class BEBehaviorWaterWheel : BEBehaviorMPRotor
     public void UpdateWaterWheel(float dt)
     {
         IWorldChunk chunk = sapi.World.BlockAccessor.GetChunk(Pos.X / 32, 0, Pos.Z / 32);
-        int index2d = Pos.Z % 32 * 32 + Pos.X % 32;
+        int index2d = (Pos.Z % 32 * 32) + (Pos.X % 32);
 
         // Check if there's water below.
         bool water = false;
@@ -141,12 +141,12 @@ public class BEBehaviorWaterWheel : BEBehaviorMPRotor
         }
         else if (rot == 90)
         {
-            currentSpeed = chunk.GetModdata<float[]>("flowVectorsZ")[index2d]; // Correct positive.
+            currentSpeed = chunk.GetModdata<float[]>("flowVectorsZ")[index2d] * riverSpeed; // Correct positive.
             invert = false;
         }
         else if (rot == 270)
         {
-            currentSpeed = chunk.GetModdata<float[]>("flowVectorsZ")[index2d];
+            currentSpeed = chunk.GetModdata<float[]>("flowVectorsZ")[index2d] * riverSpeed;
             invert = true;
         }
 

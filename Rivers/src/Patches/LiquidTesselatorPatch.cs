@@ -12,8 +12,8 @@ public class LiquidTesselatorPatch
 
         if (varsTwo.flowVectorsX != null) // Check if the chunk can even have a river.
         {
-            float xFlow = varsTwo.flowVectorsX[vars.posZ % 32 * 32 + vars.posX % 32]; // These are normalized vectors multiplied by the speed?
-            float zFlow = varsTwo.flowVectorsZ[vars.posZ % 32 * 32 + vars.posX % 32]; // Z * 32 + X, 2d index.
+            float xFlow = varsTwo.flowVectorsX[(vars.posZ % 32 * 32) + (vars.posX % 32)] * varsTwo.riverSpeed; // These are normalized vectors multiplied by the speed?
+            float zFlow = varsTwo.flowVectorsZ[(vars.posZ % 32 * 32) + (vars.posX % 32)] * varsTwo.riverSpeed; // Z * 32 + X, 2d index.
 
             if (xFlow != 0 || zFlow != 0)
             {

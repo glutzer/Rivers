@@ -36,7 +36,7 @@ public class RiverBlockBehavior : BlockBehavior
     {
         if (pos.Y != TerraGenConfig.seaLevel - 1 || RiverConfig.Loaded.clientParticles == false) return false;
 
-        float[] flowVectorsX = world.BlockAccessor.GetChunk(pos.X / 32, 0, pos.Z / 32).GetModdata<float[]>("flowVectorsX");
+        float[] flowVectorsX = world.BlockAccessor.GetChunk(pos.X / 32, 0, pos.Z / 32)?.GetModdata<float[]>("flowVectorsX");
 
         if (flowVectorsX != null)
         {
@@ -63,11 +63,14 @@ public class RiverBlockBehavior : BlockBehavior
             float x = chunk.GetModdata<float[]>("flowVectorsX")?[(pos.Z % 32 * 32) + (pos.X % 32)] ?? 0;
             float z = chunk.GetModdata<float[]>("flowVectorsZ")?[(pos.Z % 32 * 32) + (pos.X % 32)] ?? 0;
 
+            x *= RiversMod.riverSpeed;
+            z *= RiversMod.riverSpeed;
+
             // 5% chance to spawn particles.
             Random rand = api.World.Rand;
 
             int sub = rand.Next(100);
-            steamParticles.Color = ColorUtil.ColorFromRgba(200, 200, 150, 100 - sub);
+            steamParticles.Color = ColorUtil.ColorFromRgba(200, 200, 150 - (sub / 2), 150 - sub);
 
             steamParticles.MinPos.Set(pos.X + 0.5f, pos.Y + 1f, pos.Z + 0.5f);
 

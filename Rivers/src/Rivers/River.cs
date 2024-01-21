@@ -1,43 +1,13 @@
-﻿using System;
+﻿using System.Collections.Generic;
 using Vintagestory.API.MathTools;
 
-/// <summary>
-/// Represents a start and end point and a size of a river.
-/// </summary>
-public class River : IEquatable<River>
+public class River
 {
-    // World coordinates.
-    public Vec2d startPoint;
-    public Vec2d endPoint;
+    public int radius = 0;
 
-    public float endSize = 0;
-    public float startSize = 1;
+    // Target zone, the farthest zone from the ocean.
+    public TectonicZone riverTarget;
+    public Vec2d startPos;
 
-    public River parentRiver;
-
-    public bool end = false;
-
-    public RiverSegment[] segments;
-    public float speed = 10;
-
-    public bool lake = false;
-
-    public River(Vec2d startPoint, Vec2d endPoint)
-    {
-        this.startPoint = startPoint;
-        this.endPoint = endPoint;
-    }
-
-    public bool Equals(River other)
-    {
-        if (other == null) return false;
-        return startPoint.X == other.startPoint.X && startPoint.Y == other.startPoint.Y && endPoint.X == other.endPoint.X && endPoint.Y == other.endPoint.Y;
-    }
-
-    public override int GetHashCode()
-    {
-        return startPoint.GetHashCode() + endPoint.GetHashCode();
-    }
-
-    // Should override equals but I don't feel like testing this.
+    public List<RiverNode> nodes = new();
 }
