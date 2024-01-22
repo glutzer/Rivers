@@ -9,11 +9,11 @@ public class FeatureTinyBoulder : FeatureRiverBoulder
     {
     }
 
-    public override void Generate(BlockPos blockPos, IServerChunk[] chunkData, LCGRandom rand, Vec2d chunkStart, Vec2d chunkEnd, IBlockAccessor blockAccessor, int rockId)
+    public override void Generate(BlockPos blockPos, IServerChunk[] chunkData, LCGRandom rand, Vec2d chunkStart, Vec2d chunkEnd, IBlockAccessor blockAccessor, int rockId, bool dry)
     {
-        double xSize = 2 + rand.NextDouble();
-        double ySize = 2 + rand.NextDouble();
-        double zSize = 2 + rand.NextDouble();
+        double xSize = hSize + rand.NextDouble() * hSizeVariance;
+        double ySize = hSize + rand.NextDouble() * hSizeVariance;
+        double zSize = hSize + rand.NextDouble() * hSizeVariance;
 
         blockPos.Sub(0, (int)(ySize / 2), 0);
 
@@ -32,6 +32,12 @@ public class FeatureTinyBoulder : FeatureRiverBoulder
                 tempPos.Set(x, y, z);
                 blockAccessor.SetBlock(rockId, tempPos);
 
+                if (y > TerraGenConfig.seaLevel - 3 && !dry)
+                {
+                    tempPos.Y++;
+                    blockAccessor.SetBlock(decor.Id, tempPos);
+                }
+
                 /*
                 if (y > TerraGenConfig.seaLevel - 2)
                 {
@@ -45,7 +51,7 @@ public class FeatureTinyBoulder : FeatureRiverBoulder
         });
     }
 
-    public override bool CanGenerate(int localX, int posY, int localZ, ushort riverDistance)
+    public override bool CanGenerate(int localX, int posY, int localZ, ushort riverDistance, bool dry)
     {
         return riverDistance < 20 && posY < TerraGenConfig.seaLevel + 10;
     }

@@ -202,20 +202,16 @@ public class TectonicPlate
                 // Chance to seed a river at each coastal tile.
                 if (nearLand && rand.NextInt(100) < config.riverSpawnChance)
                 {
-                    River river = new()
-                    {
-                        riverTarget = FindHighestZone(zone)
-                    };
+                    River river = new();
+
+                    // Attempt to go uphill 5 zones.
+                    TectonicZone target = FindHighestZone(zone, 8);
 
                     // Angle river will point towards initially.
-                    Vec2d startVector = river.riverTarget.localZoneCenterPosition - zone.localZoneCenterPosition;
-
+                    Vec2d startVector = target.localZoneCenterPosition - zone.localZoneCenterPosition;
                     double startAngle = RiverMath.NormalToDegrees(startVector.Normalize());
 
-                    // Position for max distance.
-                    Vec2d targetPos = river.riverTarget.localZoneCenterPosition;
-
-                    if (GenerateRiver(startAngle, startAngle, zone.localZoneCenterPosition, targetPos, 0, null, river.nodes, config.error))
+                    if (GenerateRiver(startAngle, zone.localZoneCenterPosition, 0, null, river.nodes, config.error))
                     {
                         rivers.Add(river);
                         river.startPos = zone.localZoneCenterPosition;
@@ -227,7 +223,7 @@ public class TectonicPlate
         while (generationQueue.Count > 0)
         {
             GenerationRequest request = generationQueue.Dequeue();
-            GenerateRiver(request.initialAngle, request.angle, request.startPos, request.targetPos, request.stage, request.parentRiver, request.nodeList, request.errorLevel);
+            GenerateRiver(request.angle, request.startPos, request.stage, request.parentRiver, request.nodeList, request.errorLevel);
         }
 
         List<RiverNode> endNodes = new();
@@ -237,7 +233,7 @@ public class TectonicPlate
         {
             endNodes.Clear();
 
-            if (river.nodes.Count < config.minSegments)
+            if (river.nodes.Count < config.minNodes)
             {
                 smallRivers.Add(river);
                 continue;
@@ -269,8 +265,7 @@ public class TectonicPlate
             {
                 if (rand.NextInt(100) < config.lakeChance)
                 {
-                    AddLake(node.endPos, 25, 50, river.nodes);
-                    node.endSize = config.minSize;
+                    AddLake(50, 75, river.nodes, node, RiverMath.NormalToDegrees((node.endPos - node.startPos).Normalize()));
                 }
             }
 
@@ -279,26 +274,23 @@ public class TectonicPlate
         }
 
         foreach (River river in smallRivers) rivers.Remove(river);
+
         riverNodes.Clear();
     }
 
     public struct GenerationRequest
     {
-        public double initialAngle;
         public double angle;
         public Vec2d startPos;
-        public Vec2d targetPos;
         public int stage;
         public RiverNode parentRiver;
         public List<RiverNode> nodeList;
         public int errorLevel;
 
-        public GenerationRequest(double initialAngle, double angle, Vec2d startPos, Vec2d targetPos, int stage, RiverNode parentRiver, List<RiverNode> nodeList, int errorLevel)
+        public GenerationRequest(double angle, Vec2d startPos, int stage, RiverNode parentRiver, List<RiverNode> nodeList, int errorLevel)
         {
-            this.initialAngle = initialAngle;
             this.angle = angle;
             this.startPos = startPos;
-            this.targetPos = targetPos;
             this.stage = stage;
             this.parentRiver = parentRiver;
             this.nodeList = nodeList;
@@ -306,8 +298,10 @@ public class TectonicPlate
         }
     }
 
-    public bool GenerateRiver(double initialAngle, double angle, Vec2d startPos, Vec2d targetPos, int stage, RiverNode parentRiver, List<RiverNode> nodeList, int errorLevel)
+    public bool GenerateRiver(double angle, Vec2d startPos, int stage, RiverNode parentRiver, List<RiverNode> nodeList, int errorLevel)
     {
+        if (stage > config.maxNodes) return false;
+
         Vec2d normal = RiverMath.DegreesToNormal(angle);
         Vec2d endPos = startPos + (normal * (config.minLength + rand.NextInt(config.lengthVariation)));
 
@@ -342,9 +336,12 @@ public class TectonicPlate
             if (errorLevel == 0) intersecting = true;
         }
 
+        // Don't go into oceans after a couple tries.
+        if (GetZoneAt(endPos.X, endPos.Y).ocean && stage < 2) intersecting = true;
+
         // Going into ocean, bending over 90 degrees from original, going farther than target: return.
         //|| Math.Abs(initialAngle - angle) > 90
-        if (intersecting || GetZoneAt(endPos.X, endPos.Y).ocean)
+        if (intersecting)
         {
             return false;
         }
@@ -369,8 +366,8 @@ public class TectonicPlate
             if (angle2 < 0) angle2 += 360;
             */
 
-            generationQueue.Enqueue(new GenerationRequest(initialAngle, angle1, endPos, targetPos, stage + 1, riverNode, nodeList, errorLevel));
-            generationQueue.Enqueue(new GenerationRequest(initialAngle, angle2, endPos, targetPos, stage + 1, riverNode, nodeList, errorLevel));
+            generationQueue.Enqueue(new GenerationRequest(angle1, endPos, stage + 1, riverNode, nodeList, errorLevel));
+            generationQueue.Enqueue(new GenerationRequest(angle2, endPos, stage + 1, riverNode, nodeList, errorLevel));
             return true;
         }
         else
@@ -385,7 +382,7 @@ public class TectonicPlate
             if (angle1 < 0) angle1 += 360;
             */
 
-            generationQueue.Enqueue(new GenerationRequest(initialAngle, angle1, endPos, targetPos, stage + 1, riverNode, nodeList, errorLevel));
+            generationQueue.Enqueue(new GenerationRequest(angle1, endPos, stage + 1, riverNode, nodeList, errorLevel));
             return true;
         }
     }
@@ -432,7 +429,7 @@ public class TectonicPlate
 
             for (int i = 0; i < river.segments.Length; i++) // For each segment.
             {
-                double offset = -config.segmentOffset + (rand.NextDouble() * config.segmentOffset * 2); // Offset segment by up to 200.
+                double offset = -config.segmentOffset + (rand.NextDouble() * config.segmentOffset * 2); // Offset segment.
 
                 river.segments[i] = new RiverSegment();
 
@@ -524,13 +521,13 @@ public class TectonicPlate
                 // If it's the last segment invalidate it.
                 if (segment.children[0] == segment)
                 {
-                    segment.parentInvalid = true;
+                    //segment.parentInvalid = true;
                     continue;
                 }
 
                 if (segment.parent == segment)
                 {
-                    segment.parentInvalid = true;
+                    //segment.parentInvalid = true;
                     continue;
                 }
 
@@ -538,9 +535,9 @@ public class TectonicPlate
 
                 if (index == 0)
                 {
-                    float projection = RiverMath.GetProjection(segment.startPos, segment.midPoint, node.parentNode.segments[config.segmentsInRiver - 1].midPoint);
+                    float projection1 = RiverMath.GetProjection(segment.startPos, segment.midPoint, node.parentNode.segments[config.segmentsInRiver - 1].midPoint);
 
-                    if (projection < 0.2 || projection > 0.8)
+                    if (projection1 < 0.2 || projection1 > 0.8)
                     {
                         segment.parentInvalid = true;
                     }
@@ -554,8 +551,6 @@ public class TectonicPlate
                 {
                     segment.parentInvalid = true;
                 }
-
-                
             }
 
             foreach (RiverSegment segment in node.segments)
@@ -565,33 +560,46 @@ public class TectonicPlate
             }
         }
     }
-    public void AddLake(Vec2d location, int minSize, int maxSize, List<RiverNode> nodeList)
+    public void AddLake(int minSize, int maxSize, List<RiverNode> nodeList, RiverNode parent, double angle)
     {
+        // Set start of the parent to the min size.
+        parent.endSize = config.minSize / 2;
+
         int lakeSize = rand.NextInt(maxSize - minSize) + minSize;
-        RiverNode lake = new(location, new Vec2d(location.X + (-lakeSize + rand.NextInt(lakeSize * 2)), location.Y + (-lakeSize + rand.NextInt(lakeSize * 2))), null)
+
+        Vec2d delta = parent.endPos + RiverMath.DegreesToNormal(angle) * 100;
+
+        // Make lakes 2 nodes?
+
+        RiverNode lakeNode = new(parent.endPos, delta, null)
         {
-            startSize = lakeSize,
+            startSize = parent.endSize,
             endSize = lakeSize,
-            segments = new RiverSegment[1]
-        }; 
-        
-        // End is 100 blocks in a random direction.
+            segments = new RiverSegment[1],
+            lake = true
+        };
 
-        lake.segments[0] = new RiverSegment(lake.startPos, lake.endPos, lake.startPos + ((lake.endPos - lake.startPos) / 2));
-        lake.segments[0].parent = lake.segments[0];
-        lake.segments[0].children.Add(lake.segments[0]);
-        lake.segments[0].parentInvalid = true;
+        // Lake only has 1 segment.
 
-        lake.segments[0].childrenArray = lake.segments[0].children.ToArray();
-        lake.segments[0].children = null;
+        lakeNode.segments[0] = new(lakeNode.startPos, lakeNode.endPos, lakeNode.startPos + ((lakeNode.endPos - lakeNode.startPos) / 2))
+        {
+            parent = parent.segments[config.segmentsInRiver - 1]
+        };
 
-        lake.speed = 0;
+        // Child of self.
+        lakeNode.segments[0].children.Add(lakeNode.segments[0]);
+        lakeNode.segments[0].childrenArray = lakeNode.segments[0].children.ToArray();
+        lakeNode.segments[0].children = null;
+        lakeNode.segments[0].parentInvalid = true;
 
-        lake.segments[0].riverNode = lake;
+        // Doesn't move.
+        lakeNode.speed = 0;
 
-        lake.lake = true;
+        lakeNode.segments[0].riverNode = lakeNode;
 
-        nodeList.Add(lake);
+        parent.segments[config.segmentsInRiver - 1].childrenArray = new RiverSegment[] { lakeNode.segments[0] };
+
+        nodeList.Add(lakeNode);
     }
 
     public List<TectonicZone> GetZonesAround(int localZoneX, int localZoneZ, int radius = 1)
@@ -619,17 +627,17 @@ public class TectonicPlate
         return zones[zx, zz];
     }
 
-    public TectonicZone FindHighestZone(TectonicZone zone)
+    public TectonicZone FindHighestZone(TectonicZone zone, int hops)
     {
         TectonicZone[] array = GetZonesAround(zone.xIndex, zone.zIndex, 1).OrderByDescending(x => x.oceanDistance).ToArray();
 
-        if (array[0] == zone)
+        if (array[0] == zone || hops == 0)
         {
             return zone;
         }
         else
         {
-            return FindHighestZone(array[0]);
+            return FindHighestZone(array[0], hops - 1);
         }
     }
 }

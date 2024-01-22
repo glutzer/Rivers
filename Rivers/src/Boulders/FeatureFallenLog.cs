@@ -18,12 +18,12 @@ public class FeatureFallenLog : PartialFeature
         blocks[2] = sapi.World.GetBlock(new AssetLocation("game:attachingplant-moss")).BlockId;
     }
 
-    public override bool CanGenerate(int localX, int posY, int localZ, ushort riverDistance)
+    public override bool CanGenerate(int localX, int posY, int localZ, ushort riverDistance, bool dry)
     {
-        return posY > TerraGenConfig.seaLevel && riverDistance < 50;
+        return posY > TerraGenConfig.seaLevel && riverDistance < 50 && !dry;
     }
 
-    public override void Generate(BlockPos blockPos, IServerChunk[] chunkData, LCGRandom rand, Vec2d chunkStart, Vec2d chunkEnd, IBlockAccessor blockAccessor, int rockId)
+    public override void Generate(BlockPos blockPos, IServerChunk[] chunkData, LCGRandom rand, Vec2d chunkStart, Vec2d chunkEnd, IBlockAccessor blockAccessor, int rockId, bool dry)
     {
         int direction = rand.NextInt(2); // 0 - W/E, 1 - N/S.
         int logType;

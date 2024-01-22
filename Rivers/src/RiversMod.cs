@@ -40,6 +40,8 @@ public class RiversMod : ModSystem
         clientChannel = api.Network.RegisterChannel("rivers")
             .RegisterMessageType(typeof(SpeedMessage))
             .SetMessageHandler<SpeedMessage>(OnSpeedMessage);
+
+        api.RegisterCommand(new RiverZoomCommand());
     }
 
     public override void StartServerSide(ICoreServerAPI api)
@@ -112,6 +114,30 @@ public class SpeedMessage
     public float riverSpeed = 1;
 }
 
+public class RiverZoomCommand : ClientChatCommand
+{
+    public static bool zoomed = false;
+
+    public RiverZoomCommand()
+    {
+        Command = "riverzoom";
+        Description = "Zooms out";
+        Syntax = ".riverzoom";
+    }
+
+    public override void CallHandler(IPlayer player, int groupId, CmdArgs args)
+    {
+        try
+        {
+            zoomed = !zoomed;
+        }
+        catch
+        {
+
+        }
+    }
+}
+
 public class RiverDebugCommand : ServerChatCommand
 {
     public ICoreServerAPI sapi;
@@ -126,8 +152,6 @@ public class RiverDebugCommand : ServerChatCommand
 
         RequiredPrivilege = Privilege.ban;
     }
-
-    
 
     public override void CallHandler(IPlayer player, int groupId, CmdArgs args)
     {
@@ -207,15 +231,20 @@ public class RiverDebugCommand : ServerChatCommand
 
             if (args[0] == "ocean")
             {
+                int oceanTiles = 0;
+
                 foreach (TectonicZone zone in plate.zones)
                 {
                     if (zone.ocean)
                     {
+                        oceanTiles++;
                         AddWaypoint(wp, "x", new Vec3d(plateStart.X + zone.localZoneCenterPosition.X, 0, plateStart.Y + zone.localZoneCenterPosition.Y), player.PlayerUID, player, 0, 100, 255, "Ocean", false);
                     }
                 }
 
                 wp.CallMethod("ResendWaypoints", player);
+
+                sapi.SendMessage(player, 0, $"{oceanTiles} ocean tiles.", EnumChatType.Notification);
             }
 
             if (args[0] == "clear")

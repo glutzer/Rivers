@@ -4,18 +4,18 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.ServerMods;
 
-public class FeatureRiverBoulder : FeatureBoulder
+public class FeatureRiverBoulder : PartialFeature
 {
     public Block decor;
     public float multi;
 
     public FeatureRiverBoulder(ICoreServerAPI sapi) : base(sapi)
     {
-        decor = sapi.World.GetBlock(new AssetLocation("game:attachingplant-moss"));
+        decor = sapi.World.GetBlock(new AssetLocation("waterwheels:sheetmoss-down"));
         multi = sapi.WorldManager.MapSizeY / 256f;
     }
 
-    public override void Generate(BlockPos blockPos, IServerChunk[] chunkData, LCGRandom rand, Vec2d chunkStart, Vec2d chunkEnd, IBlockAccessor blockAccessor, int rockId)
+    public override void Generate(BlockPos blockPos, IServerChunk[] chunkData, LCGRandom rand, Vec2d chunkStart, Vec2d chunkEnd, IBlockAccessor blockAccessor, int rockId, bool dry)
     {
         double xSize = hSize + (rand.NextFloat() * hSizeVariance);
         double ySize = hSize;
@@ -41,6 +41,12 @@ public class FeatureRiverBoulder : FeatureBoulder
                 tempPos.Set(x, y, z);
                 blockAccessor.SetBlock(rockId, tempPos);
 
+                if (y > TerraGenConfig.seaLevel - 3 && !dry)
+                {
+                    tempPos.Y++;
+                    blockAccessor.SetBlock(decor.Id, tempPos);
+                }
+
                 /*
                 if (y > TerraGenConfig.seaLevel - 2)
                 {
@@ -54,8 +60,21 @@ public class FeatureRiverBoulder : FeatureBoulder
         });
     }
 
-    public override bool CanGenerate(int localX, int posY, int localZ, ushort riverDistance)
+    public override bool CanGenerate(int localX, int posY, int localZ, ushort riverDistance, bool dry)
     {
         return riverDistance < 10 && posY < TerraGenConfig.seaLevel + 5;
+    }
+
+    public static double DistanceToEllipsoid(double worldX, double worldY, double worldZ, double centerX, double centerY, double centerZ, double xSize, double ySize, double zSize)
+    {
+        double translatedX = worldX - centerX;
+        double translatedY = worldY - centerY;
+        double translatedZ = worldZ - centerZ;
+
+        double normX = translatedX / xSize;
+        double normY = translatedY / ySize;
+        double normZ = translatedZ / zSize;
+
+        return (normX * normX) + (normY * normY) + (normZ * normZ);
     }
 }

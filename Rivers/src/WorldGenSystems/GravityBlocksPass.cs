@@ -26,7 +26,7 @@ public class GravityBlocksPass : ModStdWorldGen
     {
         sapi = api;
 
-        if (RiverConfig.Loaded.removeGravityBlocks)
+        if (RiverConfig.Loaded.fixGravityBlocks)
         {
             api.Event.InitWorldGenerator(InitWorldGen, "standard");
             api.Event.ChunkColumnGeneration(OnChunkColumnGen, EnumWorldGenPass.Terrain, "standard");

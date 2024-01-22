@@ -54,7 +54,6 @@ public class BlockLayersPatches
 
             insertionIndex = -1;
             object seaLevelOperand = null;
-            Label returnLabel = il.DefineLabel();
 
             for (int i = 4; i < code.Count - 4; i++)
             {
@@ -62,7 +61,6 @@ public class BlockLayersPatches
                 {
                     seaLevelOperand = code[i].operand;
                     insertionIndex = i + 1;
-                    code[i + 1].labels.Add(returnLabel);
                     break;
                 }
             }
@@ -72,8 +70,10 @@ public class BlockLayersPatches
                 new CodeInstruction(OpCodes.Ldloc_S, xOperand),
                 new CodeInstruction(OpCodes.Ldloc_S, zOperand),
                 new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(BlockLayersPatches), "IsRiver")),
-                new CodeInstruction(OpCodes.Brfalse_S, returnLabel),
-                new CodeInstruction(OpCodes.Ldc_I4_0),
+                new CodeInstruction(OpCodes.Ldloc_S, seaLevelOperand),
+                new CodeInstruction(OpCodes.Conv_R4),
+                new CodeInstruction(OpCodes.Mul),
+                new CodeInstruction(OpCodes.Conv_I4),
                 new CodeInstruction(OpCodes.Stloc_S, seaLevelOperand)
             };
 
@@ -93,26 +93,23 @@ public class BlockLayersPatches
         [HarmonyPostfix]
         public static void Postfix()
         {
-            //distances = null;
+            distances = null;
         }
     }
 
     public static void SetVectors(IServerChunk[] chunks)
     {
-        //distances = chunks[0].MapChunk.GetModdata<ushort[]>("riverDistance");
+        distances = chunks[0].MapChunk.GetModdata<ushort[]>("riverDistance");
     }
 
     // Disable Y level boost in dry areas.
-    public static bool IsRiver(int localX, int localZ)
+    public static float IsRiver(int localX, int localZ)
     {
-        return true;
+        ushort distance = distances[(localZ * 32) + localX];
 
-        /*
-        if (distances == null) return false;
+        if (distance == 0) return 0;
+        if (distance > 10) return 1;
 
-        if (distances[(localZ * 32) + localX] == 0) return true;
-
-        return false;
-        */
+        return (float)RiverMath.InverseLerp(distance, 0, 10);
     }
 }

@@ -18,9 +18,10 @@ public class RiverGenerator
     {
         this.sapi = sapi;
 
-        double multiplier = 256f / sapi.WorldManager.MapSizeY;
-        riverDepth = RiverConfig.Loaded.riverDepth * multiplier;
-        baseDepth = RiverConfig.Loaded.baseDepth * multiplier;
+        double multi = 256f / sapi.WorldManager.MapSizeY;
+
+        riverDepth = RiverConfig.Loaded.riverDepth * multi;
+        baseDepth = RiverConfig.Loaded.baseDepth * multi;
 
         riverDistortionX = new Noise(0, RiverConfig.Loaded.riverFrequency, RiverConfig.Loaded.riverOctaves, RiverConfig.Loaded.riverGain, RiverConfig.Loaded.riverLacunarity);
         riverDistortionZ = new Noise(2, RiverConfig.Loaded.riverFrequency, RiverConfig.Loaded.riverOctaves, RiverConfig.Loaded.riverGain, RiverConfig.Loaded.riverLacunarity);

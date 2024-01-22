@@ -19,11 +19,12 @@ public class SeaPatch
         [HarmonyPrefix]
         public static bool Prefix(GuiElementMap __instance, float zoomDiff, float px, float pz)
         {
-            zoomDiff /= 20;
-
-            if ((!(zoomDiff < 0f) || !(__instance.ZoomLevel + zoomDiff < 0.0125f)) && (!(zoomDiff > 0f) || !(__instance.ZoomLevel + zoomDiff > 60f)))
+            if ((!(zoomDiff < 0f) || !(__instance.ZoomLevel + zoomDiff < 0.25f)) && (!(zoomDiff > 0f) || !(__instance.ZoomLevel + zoomDiff > 10f)))
             {
                 __instance.ZoomLevel += zoomDiff;
+
+                if (RiverZoomCommand.zoomed) __instance.ZoomLevel = 0.06f;
+
                 double zoomRel = 1f / __instance.ZoomLevel;
                 double relWidth = (__instance.Bounds.InnerWidth * zoomRel) - __instance.CurrentBlockViewBounds.Width;
                 double relHeight = (__instance.Bounds.InnerHeight * zoomRel) - __instance.CurrentBlockViewBounds.Length;

@@ -497,6 +497,7 @@ public class NewGenTerra : ModStdWorldGen
                 }
                 else
                 {
+                    // This was declared here.
                     double riverLerp = Math.Clamp(RiverMath.InverseLerp(samples[localX, localZ].riverDistance + 1, 0, valleyMax), 0, 1);
                     riverLerp *= riverLerp;
                     yMaximum = (int)(riverFloorBase + (riverFloorVariation * floorNoise.GetPosNoise(worldX, worldZ)) + (aboveSeaLevel * riverLerp));

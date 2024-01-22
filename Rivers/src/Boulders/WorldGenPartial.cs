@@ -9,16 +9,16 @@ public abstract class WorldGenPartial : WorldGenBase
     public ICoreServerAPI sapi;
     public LCGRandom chunkRand;
 
-    public abstract int chunkRange { get; }
+    public abstract int ChunkRange { get; }
 
     public virtual void ChunkColumnGeneration(IChunkColumnGenerateRequest request)
     {
         IServerChunk[] chunks = request.Chunks;
         int chunkX = request.ChunkX;
         int chunkZ = request.ChunkZ;
-        for (int i = -chunkRange; i <= chunkRange; i++)
+        for (int i = -ChunkRange; i <= ChunkRange; i++)
         {
-            for (int j = -chunkRange; j <= chunkRange; j++)
+            for (int j = -ChunkRange; j <= ChunkRange; j++)
             {
                 GeneratePartial(chunks, chunkX, chunkZ, chunkX + i, chunkZ + j);
             }
