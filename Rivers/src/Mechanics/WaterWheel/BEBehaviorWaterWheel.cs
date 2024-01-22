@@ -141,12 +141,12 @@ public class BEBehaviorWaterWheel : BEBehaviorMPRotor
         }
         else if (rot == 90)
         {
-            currentSpeed = chunk.GetModdata<float[]>("flowVectorsZ")[index2d] * riverSpeed; // Correct positive.
+            currentSpeed = chunk.GetModdata<float[]>("flowVectorsZ")[index2d]; // Correct positive.
             invert = false;
         }
         else if (rot == 270)
         {
-            currentSpeed = chunk.GetModdata<float[]>("flowVectorsZ")[index2d] * riverSpeed;
+            currentSpeed = chunk.GetModdata<float[]>("flowVectorsZ")[index2d];
             invert = true;
         }
 
@@ -157,7 +157,7 @@ public class BEBehaviorWaterWheel : BEBehaviorMPRotor
             currentSpeed = -currentSpeed;
         }
 
-        currentSpeed /= riverSpeed;
+        if (currentSpeed > 0.6f) currentSpeed = 1;
 
         Blockentity.MarkDirty();
     }

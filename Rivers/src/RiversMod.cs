@@ -247,6 +247,24 @@ public class RiverDebugCommand : ServerChatCommand
                 sapi.SendMessage(player, 0, $"{oceanTiles} ocean tiles.", EnumChatType.Notification);
             }
 
+            if (args[0] == "coastal")
+            {
+                int coastalTiles = 0;
+
+                foreach (TectonicZone zone in plate.zones)
+                {
+                    if (zone.coastal)
+                    {
+                        coastalTiles++;
+                        AddWaypoint(wp, "x", new Vec3d(plateStart.X + zone.localZoneCenterPosition.X, 0, plateStart.Y + zone.localZoneCenterPosition.Y), player.PlayerUID, player, 255, 100, 255, "Ocean", false);
+                    }
+                }
+
+                wp.CallMethod("ResendWaypoints", player);
+
+                sapi.SendMessage(player, 0, $"{coastalTiles} ocean tiles.", EnumChatType.Notification);
+            }
+
             if (args[0] == "clear")
             {
                 wp.Waypoints.Clear();

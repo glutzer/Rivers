@@ -120,36 +120,6 @@ public class TectonicPlate
             }
         }
 
-        // Check if a zone is coastal.
-        // Either an ocean tile or bordering one.
-        for (int x = 0; x < width; x++)
-        {
-            for (int z = 0; z < depth; z++)
-            {
-                TectonicZone zone = zones[x, z];
-
-                if (zone.ocean)
-                {
-                    zone.coastal = true;
-                    continue;
-                }
-
-                for (int xz = -1; xz < 2; xz++)
-                {
-                    for (int zz = -1; zz < 2; zz++)
-                    {
-                        if (zones[Math.Clamp(x + xz, 0, config.zonesInPlate - 1), Math.Clamp(z + zz, 0, config.zonesInPlate - 1)].ocean)
-                        {
-                            zone.coastal = true;
-                            break;
-                        }
-                    }
-
-                    if (zone.coastal) break;
-                }
-            }
-        }
-
         // Set zone height based on distance from closest ocean tile.
         for (int x = 0; x < width; x++)
         {
@@ -169,7 +139,7 @@ public class TectonicPlate
                     }
                 }
 
-                zones[x, z].oceanDistance = closestDistance / (plateSize / 2);
+                zones[x, z].oceanDistance = closestDistance; // / (plateSize / 2);
             }
         }
 
@@ -191,6 +161,7 @@ public class TectonicPlate
                     {
                         if (zones[Math.Clamp(x + xz, 0, config.zonesInPlate - 1), Math.Clamp(z + zz, 0, config.zonesInPlate - 1)].ocean == false)
                         {
+                            zone.coastal = true;
                             nearLand = true;
                             break;
                         }
@@ -204,7 +175,7 @@ public class TectonicPlate
                 {
                     River river = new();
 
-                    // Attempt to go uphill 5 zones.
+                    // Attempt to go uphill 8 zones.
                     TectonicZone target = FindHighestZone(zone, 8);
 
                     // Angle river will point towards initially.
@@ -261,6 +232,9 @@ public class TectonicPlate
                 }
             }
 
+            // Up to 512 away from the endpoint of the farthest segment. (Valley width + distortion + 32 less than 512).
+            river.radius = radius + 512;
+
             foreach (RiverNode node in endNodes)
             {
                 if (rand.NextInt(100) < config.lakeChance)
@@ -268,9 +242,6 @@ public class TectonicPlate
                     AddLake(50, 75, river.nodes, node, RiverMath.NormalToDegrees((node.endPos - node.startPos).Normalize()));
                 }
             }
-
-            // Up to 512 away from the endpoint of the farthest segment. (Valley width + distortion + 32 less than 512).
-            river.radius = radius + 512;
         }
 
         foreach (River river in smallRivers) rivers.Remove(river);
@@ -300,6 +271,7 @@ public class TectonicPlate
 
     public bool GenerateRiver(double angle, Vec2d startPos, int stage, RiverNode parentRiver, List<RiverNode> nodeList, int errorLevel)
     {
+        // If this branch exceeds max nodes, return.
         if (stage > config.maxNodes) return false;
 
         Vec2d normal = RiverMath.DegreesToNormal(angle);
@@ -325,19 +297,22 @@ public class TectonicPlate
         }
 
         // Don't go out of bounds.
-        if (endPos.X < 0 || endPos.X > plateSize || endPos.Y < 0 || endPos.Y > plateSize) intersecting = true;
+        if (endPos.X < 0 || endPos.X > plateSize || endPos.Y < 0 || endPos.Y > plateSize)
+        {
+            intersecting = true;
+        }
 
         // Don't go downhill.
         double startDist = GetZoneAt(startPos.X, startPos.Y).oceanDistance;
         double endDist = GetZoneAt(endPos.X, endPos.Y).oceanDistance;
         if (startDist > endDist)
         {
-            errorLevel--;
             if (errorLevel == 0) intersecting = true;
+            errorLevel--;
         }
 
         // Don't go into oceans after a couple tries.
-        if (GetZoneAt(endPos.X, endPos.Y).ocean && stage < 2) intersecting = true;
+        if (GetZoneAt(endPos.X, endPos.Y).ocean && stage > 2) intersecting = true;
 
         // Going into ocean, bending over 90 degrees from original, going farther than target: return.
         //|| Math.Abs(initialAngle - angle) > 90
@@ -354,10 +329,10 @@ public class TectonicPlate
         if (parentRiver != null) parentRiver.end = false;
 
         // Chance for a river to split into 2 rivers
-        if (rand.NextInt(100) < config.riverSplitChance && riverNode.parentNode != null)
+        if (rand.NextInt(100) < config.riverSplitChance && parentRiver != null)
         {
-            double angle1 = angle + (10 + rand.NextInt(35));
-            double angle2 = angle - (10 + rand.NextInt(35));
+            double angle1 = angle + (config.minForkAngle + rand.NextInt(config.forkVaration));
+            double angle2 = angle - (config.minForkAngle + rand.NextInt(config.forkVaration));
 
             /*
             if (angle1 > 360) angle1 -= 360;
@@ -375,7 +350,7 @@ public class TectonicPlate
             int sign = 0;
             while (sign == 0) sign = -1 + rand.NextInt(3);
 
-            double angle1 = angle - (rand.NextInt(20) * sign);
+            double angle1 = angle - (rand.NextInt(config.normalAngle) * sign);
 
             /*
             if (angle1 > 360) angle1 -= 360;
@@ -393,7 +368,7 @@ public class TectonicPlate
 
         foreach (RiverNode river in riverEndList)
         {
-            AssignRiverSize(river, 2);
+            AssignRiverSize(river, 1);
         }
     }
 
@@ -469,10 +444,12 @@ public class TectonicPlate
         foreach (RiverNode node in riverNodeList)
         {
             // Make sure all rivers flow into each other smoothly.
+            /*
             if (node.parentNode?.endSize > node.startSize)
             {
                 node.startSize = node.parentNode.endSize;
             }
+            */
 
             for (int i = 0; i < node.segments.Length; i++)
             {
@@ -521,13 +498,13 @@ public class TectonicPlate
                 // If it's the last segment invalidate it.
                 if (segment.children[0] == segment)
                 {
-                    //segment.parentInvalid = true;
+                    segment.parentInvalid = true;
                     continue;
                 }
 
                 if (segment.parent == segment)
                 {
-                    //segment.parentInvalid = true;
+                    segment.parentInvalid = true;
                     continue;
                 }
 
@@ -598,6 +575,7 @@ public class TectonicPlate
         lakeNode.segments[0].riverNode = lakeNode;
 
         parent.segments[config.segmentsInRiver - 1].childrenArray = new RiverSegment[] { lakeNode.segments[0] };
+        parent.segments[config.segmentsInRiver - 1].parentInvalid = false;
 
         nodeList.Add(lakeNode);
     }

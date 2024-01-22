@@ -90,7 +90,7 @@ public class GeneratePartialFeatures : WorldGenPartial
         int climateBotLeft = climateMap.GetUnpaddedInt((int)(rlX * cFac), (int)((rlZ * cFac) + cFac));
         int climateBotRight = climateMap.GetUnpaddedInt((int)((rlX * cFac) + cFac), (int)((rlZ * cFac) + cFac));
         int rain = (GameMath.BiLerpRgbColor(0.5f, 0.5f, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight) >> 8) & 0xFF;
-        bool dry = rain < 125;
+        bool dry = rain < 100;
 
         BlockPos pos = new(0, 0, 0);
 

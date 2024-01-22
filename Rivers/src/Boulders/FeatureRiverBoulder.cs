@@ -45,6 +45,10 @@ public class FeatureRiverBoulder : PartialFeature
                 {
                     tempPos.Y++;
                     blockAccessor.SetBlock(decor.Id, tempPos);
+
+                    // Remove floating moss.
+                    tempPos.Y++;
+                    if (blockAccessor.GetBlock(tempPos).Id == decor.Id) blockAccessor.SetBlock(0, tempPos);
                 }
 
                 /*

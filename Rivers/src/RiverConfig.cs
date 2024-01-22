@@ -2,6 +2,13 @@
 {
     public static RiverConfig Loaded { get; set; } = new RiverConfig();
 
+    // When forking move at these angles.
+    public int minForkAngle = 10;
+    public int forkVaration = 45;
+
+    // When adding another node change by 0 to this angle left or right.
+    public int normalAngle = 20;
+
     // Minimum and maximum size of rivers.
     public float minSize = 8;
     public float maxSize = 40;
@@ -18,17 +25,17 @@
 
     // Minimum length of a river node and how much to add to it randomly.
     public int minLength = 150;
-    public int lengthVariation = 150;
+    public int lengthVariation = 300;
 
     // Grid for generating rivers. Don't make this bigger, it's already laggy.
     public int zoneSize = 256;
     public int zonesInPlate = 128;
 
     // Chance for a river to be seeded at a coastal zone.
-    public int riverSpawnChance = 20;
+    public int riverSpawnChance = 10;
 
     // Chance for node to split.
-    public int riverSplitChance = 75;
+    public int riverSplitChance = 70;
 
     // Chance for a lake when nodes stop.
     public int lakeChance = 15;
@@ -65,7 +72,7 @@
     public double riverFloorVariation = 4;
 
     // How many blocks of submerged land, relative to default height, a spot is considered an ocean at.
-    public float oceanThreshold = 30f;
+    public float oceanThreshold = 30;
 
     // Water wheel speed and torque.
     public float wheelSpeedMultiplier = 0.5f;

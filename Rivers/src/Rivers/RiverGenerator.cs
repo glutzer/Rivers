@@ -81,6 +81,12 @@ public class RiverGenerator
                 {
                     if (connector.parentInvalid) midPointProjection = 0;
 
+                    // Lerp to the halfway point if the river fork doesn't match up.
+                    if (connector.riverNode.startSize < segment.riverNode.endSize)
+                    {
+                        riverSize = GameMath.Lerp(connector.riverNode.startSize, connector.riverNode.endSize, 0.5f);
+                    }
+
                     lerpedStart.X = GameMath.Lerp(segment.midPoint.X, connector.startPos.X, midPointProjection);
                     lerpedStart.Y = GameMath.Lerp(segment.midPoint.Y, connector.startPos.Y, midPointProjection);
                     lerpedEnd.X = GameMath.Lerp(segment.endPos.X, connector.midPoint.X, midPointProjection);
@@ -165,6 +171,12 @@ public class RiverGenerator
                 if (segmentProjection > 0.5)
                 {
                     if (connector.parentInvalid) midPointProjection = 0;
+
+                    // Lerp to the halfway point if the river fork doesn't match up.
+                    if (connector.riverNode.startSize < segment.riverNode.endSize)
+                    {
+                        riverSize = GameMath.Lerp(connector.riverNode.startSize, connector.riverNode.endSize, 0.5f);
+                    }
 
                     lerpedStart.X = GameMath.Lerp(segment.midPoint.X, connector.startPos.X, midPointProjection);
                     lerpedStart.Y = GameMath.Lerp(segment.midPoint.Y, connector.startPos.Y, midPointProjection);
