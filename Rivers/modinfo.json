@@ -1,12 +1,12 @@
 {
     "type": "code",
-    "modid": "fractralrivers",
+    "modid": "rivers",
     "name": "Rivers",
     "authors": [
         "sneezerstein"
     ],
     "description": "Standalone version of rivers and waterwheels.",
-    "version": "1.2.0",
+    "version": "2.0.0",
     "dependencies": {
         "game": ""
     }

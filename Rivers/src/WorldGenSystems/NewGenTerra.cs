@@ -452,8 +452,7 @@ public class NewGenTerra : ModStdWorldGen
 
         RiverSegment[] validArray = riverGenerator.ValidateSegments(validSegments.ToArray(), maxWidth, localStart.X + 16, localStart.Y + 16);
 
-        float[] flowVectorsX = new float[32 * 32];
-        float[] flowVectorsZ = new float[32 * 32];
+        float[] flowVectors = new float[32 * 32 * 2];
         ushort[] riverDistance = new ushort[32 * 32];
         bool riverBank = false;
 
@@ -475,8 +474,8 @@ public class NewGenTerra : ModStdWorldGen
             // Determine if water is flowing there and add it.
             if (samples[localX, localZ].flowVectorX > -100)
             {
-                flowVectorsX[chunkIndex2d] = samples[localX, localZ].flowVectorX;
-                flowVectorsZ[chunkIndex2d] = samples[localX, localZ].flowVectorZ;
+                flowVectors[chunkIndex2d] = samples[localX, localZ].flowVectorX;
+                flowVectors[chunkIndex2d + 1024] = samples[localX, localZ].flowVectorZ;
                 riverBank = true;
             }
 
@@ -773,8 +772,7 @@ public class NewGenTerra : ModStdWorldGen
         // SET RIVER DATA ----------
         if (riverBank)
         {
-            chunks[0].SetModdata("flowVectorsX", flowVectorsX);
-            chunks[0].SetModdata("flowVectorsZ", flowVectorsZ);
+            chunks[0].SetModdata("flowVectors", flowVectors);
         }
         chunks[0].MapChunk.SetModdata("riverDistance", riverDistance);
 

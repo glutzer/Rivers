@@ -71,17 +71,15 @@ public class EntityBehaviorPhysicsPatch
             if (entity is EntityPlayer)
             {
                 IWorldChunk chunk = entity.Api.World.BlockAccessor.GetChunk((int)pos.X / 32, 0, (int)pos.Z / 32);
-                float[] flowVectorsX = chunk?.GetModdata<float[]>("flowVectorsX");
+                float[] flowVectors = chunk?.GetModdata<float[]>("flowVectors");
 
-                if (flowVectorsX != null)
+                if (flowVectors != null)
                 {
                     float riverSpeed = RiversMod.riverSpeed;
 
                     float density = 300f / GameMath.Clamp(entity.MaterialDensity, 750f, 2500f) * (60 * dt); // Calculate density.
 
-                    float[] flowVectorsZ = chunk.GetModdata<float[]>("flowVectorsZ");
-
-                    pos.Motion.Add(flowVectorsX[LocalChunkIndex2D((int)pos.X % 32, (int)pos.Z % 32)] * 0.0025 * density * riverSpeed, 0, flowVectorsZ[LocalChunkIndex2D((int)pos.X % 32, (int)pos.Z % 32)] * 0.0025 * density * riverSpeed);
+                    pos.Motion.Add(flowVectors[LocalChunkIndex2D((int)pos.X % 32, (int)pos.Z % 32)] * 0.0025 * density * riverSpeed, 0, flowVectors[LocalChunkIndex2D((int)pos.X % 32, (int)pos.Z % 32) + 1024] * 0.0025 * density * riverSpeed);
                 }
             }
             
@@ -105,13 +103,12 @@ public class EntityBehaviorPhysicsPatch
                 float riverSpeed = RiversMod.riverSpeed;
 
                 IWorldChunk chunk = __instance.Api.World.BlockAccessor.GetChunk((int)__instance.SidedPos.X / 32, 0, (int)__instance.SidedPos.Z / 32);
-                float[] flowVectorsX = chunk?.GetModdata<float[]>("flowVectorsX");
 
-                if (flowVectorsX != null)
+                float[] flowVectors = chunk?.GetModdata<float[]>("flowVectors");
+
+                if (flowVectors != null)
                 {
-                    float[] flowVectorsZ = chunk.GetModdata<float[]>("flowVectorsZ");
-
-                    __instance.SidedPos.Motion.Add(flowVectorsX[LocalChunkIndex2D((int)__instance.SidedPos.X % 32, (int)__instance.SidedPos.Z % 32)] * 0.01 * riverSpeed, 0, flowVectorsZ[LocalChunkIndex2D((int)__instance.SidedPos.X % 32, (int)__instance.SidedPos.Z % 32)] * 0.01 * riverSpeed);
+                    __instance.SidedPos.Motion.Add(flowVectors[LocalChunkIndex2D((int)__instance.SidedPos.X % 32, (int)__instance.SidedPos.Z % 32)] * 0.01 * riverSpeed, 0, flowVectors[LocalChunkIndex2D((int)__instance.SidedPos.X % 32, (int)__instance.SidedPos.Z % 32) + 1024] * 0.01 * riverSpeed);
                 }
             }
         }

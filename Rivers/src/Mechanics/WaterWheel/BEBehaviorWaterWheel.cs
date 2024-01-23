@@ -120,8 +120,8 @@ public class BEBehaviorWaterWheel : BEBehaviorMPRotor
                 break;
         }
 
-        float[] vectorsX = chunk.GetModdata<float[]>("flowVectorsX");
-        if (vectorsX == null)
+        float[] vectors = chunk.GetModdata<float[]>("flowVectors");
+        if (vectors == null)
         {
             currentSpeed = 0;
             invert = false;
@@ -131,22 +131,22 @@ public class BEBehaviorWaterWheel : BEBehaviorMPRotor
 
         if (rot == 0)
         {
-            currentSpeed = vectorsX[index2d]; // Correct positive.
+            currentSpeed = vectors[index2d]; // Correct positive.
             invert = true;
         }
         else if (rot == 180)
         {
-            currentSpeed = vectorsX[index2d];
+            currentSpeed = vectors[index2d];
             invert = false;
         }
         else if (rot == 90)
         {
-            currentSpeed = chunk.GetModdata<float[]>("flowVectorsZ")[index2d]; // Correct positive.
+            currentSpeed = vectors[index2d + 1024]; // Correct positive.
             invert = false;
         }
         else if (rot == 270)
         {
-            currentSpeed = chunk.GetModdata<float[]>("flowVectorsZ")[index2d];
+            currentSpeed = vectors[index2d + 1024];
             invert = true;
         }
 

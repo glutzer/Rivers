@@ -36,11 +36,11 @@ public class RiverBlockBehavior : BlockBehavior
     {
         if (pos.Y != TerraGenConfig.seaLevel - 1 || RiverConfig.Loaded.clientParticles == false) return false;
 
-        float[] flowVectorsX = world.BlockAccessor.GetChunk(pos.X / 32, 0, pos.Z / 32)?.GetModdata<float[]>("flowVectorsX");
+        float[] flowVectors = world.BlockAccessor.GetChunk(pos.X / 32, 0, pos.Z / 32)?.GetModdata<float[]>("flowVectors");
 
-        if (flowVectorsX != null)
+        if (flowVectors != null)
         {
-            if (flowVectorsX[(pos.Z % 32 * 32) + (pos.X % 32)] != 0)
+            if (flowVectors[(pos.Z % 32 * 32) + (pos.X % 32)] != 0)
             {
                 handling = EnumHandling.PreventDefault;
                 return true;
@@ -60,8 +60,12 @@ public class RiverBlockBehavior : BlockBehavior
 
             if (chunk == null) return;
 
-            float x = chunk.GetModdata<float[]>("flowVectorsX")?[(pos.Z % 32 * 32) + (pos.X % 32)] ?? 0;
-            float z = chunk.GetModdata<float[]>("flowVectorsZ")?[(pos.Z % 32 * 32) + (pos.X % 32)] ?? 0;
+            float[] flowVectors = chunk.GetModdata<float[]>("flowVectors");
+
+            if (flowVectors == null) return;
+
+            float x = flowVectors[(pos.Z % 32 * 32) + (pos.X % 32)];
+            float z = flowVectors[(pos.Z % 32 * 32) + (pos.X % 32) + 1024];
 
             x *= RiversMod.riverSpeed;
             z *= RiversMod.riverSpeed;
