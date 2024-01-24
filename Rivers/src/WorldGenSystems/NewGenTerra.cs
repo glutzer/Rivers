@@ -413,7 +413,9 @@ public class NewGenTerra : ModStdWorldGen
         int localChunkZ = chunkZ % chunksInPlate;
 
         List<RiverSegment> validSegments = new();
-        Vec2d localStart = new((localChunkX * chunksize) + 16, (localChunkZ * chunksize) + 16);
+        Vec2d localStart = new(localChunkX * chunksize, localChunkZ * chunksize);
+
+        localStart += 16;
 
         foreach (River river in plate.rivers)
         {
@@ -450,7 +452,10 @@ public class NewGenTerra : ModStdWorldGen
             }
         }
 
-        RiverSegment[] validArray = riverGenerator.ValidateSegments(validSegments.ToArray(), maxWidth, localStart.X + 16, localStart.Y + 16);
+        RiverSegment[] validArray = riverGenerator.ValidateSegments(validSegments.ToArray(), maxWidth, localStart.X, localStart.Y);
+
+        // Bandaid if disabled, remove to fuck up worldgen for existing.
+        //localStart -= 16;
 
         float[] flowVectors = new float[32 * 32 * 2];
         ushort[] riverDistance = new ushort[32 * 32];
@@ -496,7 +501,6 @@ public class NewGenTerra : ModStdWorldGen
                 }
                 else
                 {
-                    // This was declared here.
                     double riverLerp = Math.Clamp(RiverMath.InverseLerp(samples[localX, localZ].riverDistance + 1, 0, valleyMax), 0, 1);
                     riverLerp *= riverLerp;
                     yMaximum = (int)(riverFloorBase + (riverFloorVariation * floorNoise.GetPosNoise(worldX, worldZ)) + (aboveSeaLevel * riverLerp));
@@ -530,6 +534,7 @@ public class NewGenTerra : ModStdWorldGen
 
             // Get Y distortion from oceanicity and upheaval.
             float upheavalStrength = GameMath.BiLerp(upheavalMapUpLeft, upheavalMapUpRight, upheavalMapBotLeft, upheavalMapBotRight, localX * chunkBlockDelta, localZ * chunkBlockDelta);
+
             float oceanicity = GameMath.BiLerp(oceanUpLeft, oceanUpRight, oceanBotLeft, oceanBotRight, localX * chunkBlockDelta, localZ * chunkBlockDelta) * oceanicityFac;
             VectorXZ distGeo = ApplyIsotropicDistortionThreshold(dist * geoDistortionMultiplier, geoDistortionThreshold, geoDistortionMultiplier * maxDistortionAmount);
 
