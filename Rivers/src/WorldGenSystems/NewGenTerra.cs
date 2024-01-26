@@ -247,7 +247,7 @@ public class NewGenTerra : ModStdWorldGen
                 for (int dz = 0; dz < chunksize; dz++)
                 {
                     double sumWeight = 0;
-                    double ypos = 0;
+                    double yPos = 0;
                     float maxWeight = 0;
 
                     borderIndicesByCardinal[Cardinal.East.Index] = (dz * chunksize) + 0;
@@ -291,12 +291,12 @@ public class NewGenTerra : ModStdWorldGen
                         float cardinalWeight = (float)Math.Pow((float)(1 - GameMath.Clamp(distToEdge, 0, 1)), 2);
                         float neibYPos = neibMap[borderIndicesByCardinal[i]] + 0.5f;
 
-                        ypos += neibYPos * Math.Max(0.0001, cardinalWeight);
+                        yPos += neibYPos * Math.Max(0.0001, cardinalWeight);
                         sumWeight += cardinalWeight;
                         maxWeight = Math.Max(maxWeight, cardinalWeight);
                     }
 
-                    taperMap[(dz * chunksize) + dx] = new WeightedTaper() { TerrainYPos = (float)(ypos / Math.Max(0.0001, sumWeight)), Weight = maxWeight };
+                    taperMap[(dz * chunksize) + dx] = new WeightedTaper() { TerrainYPos = (float)(yPos / Math.Max(0.0001, sumWeight)), Weight = maxWeight };
                 }
             }
         }
@@ -358,7 +358,7 @@ public class NewGenTerra : ModStdWorldGen
         }
 
         int rockID = GlobalConfig.defaultRockId;
-        float oceanicityFac = sapi.WorldManager.MapSizeY / 256 * 0.33333f; // At a mapheight of 255, submerge land by up to 85 blocks.
+        float oceanicityFac = sapi.WorldManager.MapSizeY / 256 * 0.33333f; // At a map height of 255, submerge land by up to 85 blocks.
 
         IntDataMap2D landformMap = mapChunk.MapRegion.LandformMap;
 
@@ -385,7 +385,7 @@ public class NewGenTerra : ModStdWorldGen
         ushort[] terrainHeightMap = chunks[0].MapChunk.WorldGenTerrainHeightMap;
 
         int mapSizeY = sapi.WorldManager.MapSizeY;
-        int mapsizeYm2 = sapi.WorldManager.MapSizeY - 2;
+        int mapSizeYm2 = sapi.WorldManager.MapSizeY - 2;
         int taperThreshold = (int)(mapSizeY * 0.9f);
         double geoUpheavalAmplitude = 255;
 
@@ -395,7 +395,7 @@ public class NewGenTerra : ModStdWorldGen
         for (int y = 0; y < layerFullySolid.Length; y++) layerFullySolid[y] = true; // Fill with true; later if any block in the layer is non-solid we will set it to false.
         for (int y = 0; y < layerFullyEmpty.Length; y++) layerFullyEmpty[y] = true; // Fill with true; later if any block in the layer is non-solid we will set it to false.
 
-        layerFullyEmpty[mapSizeY - 1] = false; // The top block is always empty (air), leaving space for grass, snowlayer etc.
+        layerFullyEmpty[mapSizeY - 1] = false; // The top block is always empty (air), leaving space for grass, snow layer etc.
 
         // RIVER DATA ----------
 
@@ -427,7 +427,7 @@ public class NewGenTerra : ModStdWorldGen
                 {
                     foreach (RiverSegment segment in node.segments)
                     {
-                        if (RiverMath.DistanceToLine(localStart, segment.startPos, segment.endPos) - segment.riverNode.startSize < maxValleyWidth + 128)
+                        if (RiverMath.DistanceToLine(localStart, segment.startPos, segment.endPos) < maxValleyWidth + segment.riverNode.startSize + 300)
                         {
                             validSegments.Add(segment); // Later check for duplicates. If the distance to another segment is too great it shouldn't have to be here.
                         }
@@ -435,6 +435,8 @@ public class NewGenTerra : ModStdWorldGen
                 }
             }
         }
+
+        localStart -= 16;
 
         double maxWidth = 0;
 
@@ -452,10 +454,12 @@ public class NewGenTerra : ModStdWorldGen
             }
         }
 
-        RiverSegment[] validArray = riverGenerator.ValidateSegments(validSegments.ToArray(), maxWidth, localStart.X, localStart.Y);
-
-        // Bandaid if disabled, remove to fuck up worldgen for existing.
-        //localStart -= 16;
+        List<RiverSegment> valid = new();
+        riverGenerator.ValidateSegments(validSegments.ToArray(), maxWidth, localStart.X, localStart.Y, valid);
+        riverGenerator.ValidateSegments(validSegments.ToArray(), maxWidth, localStart.X + 31, localStart.Y, valid);
+        riverGenerator.ValidateSegments(validSegments.ToArray(), maxWidth, localStart.X, localStart.Y + 31, valid);
+        riverGenerator.ValidateSegments(validSegments.ToArray(), maxWidth, localStart.X + 31, localStart.Y + 31, valid);
+        RiverSegment[] validArray = valid.ToArray();
 
         float[] flowVectors = new float[32 * 32 * 2];
         ushort[] riverDistance = new ushort[32 * 32];
@@ -551,10 +555,10 @@ public class NewGenTerra : ModStdWorldGen
 
             float distortedPosYSlide = distY - (int)Math.Floor(distY); // This value will be unchanged throughout the posY loop.
 
-            for (int posY = 1; posY <= mapsizeYm2; posY++)
+            for (int posY = 1; posY <= mapSizeYm2; posY++)
             {
                 // Setup a lerp between threshold values, so that distortY can be applied continuously there.
-                StartSampleDisplacedYThreshold(posY + distY, mapsizeYm2, out int distortedPosYBase);
+                StartSampleDisplacedYThreshold(posY + distY, mapSizeYm2, out int distortedPosYBase);
 
                 // Value starts as the landform Y threshold.
                 double threshold = 0;
@@ -591,7 +595,7 @@ public class NewGenTerra : ModStdWorldGen
                 if (posY > yMaximum)
                 {
                     layerFullySolid[posY] = false;
-                    for (int yAbove = posY + 1; yAbove <= mapsizeYm2; yAbove++) layerFullySolid[yAbove] = false;
+                    for (int yAbove = posY + 1; yAbove <= mapSizeYm2; yAbove++) layerFullySolid[yAbove] = false;
                     break;
                 }
 
@@ -606,7 +610,7 @@ public class NewGenTerra : ModStdWorldGen
                     layerFullySolid[posY] = false; // No terrain block (thread safe even when this is parallel).
 
                     // We can now exit the loop early, because empirical testing shows that once the threshold has exceeded the max noise bound, it never returns to a negative noise value at any higher y value in the same blocks column. This represents air well above the "interesting" part of the terrain. Tested for all world heights in the range 256-1536, tested with arches, overhangs, etc.
-                    for (int yAbove = posY + 1; yAbove <= mapsizeYm2; yAbove++) layerFullySolid[yAbove] = false;
+                    for (int yAbove = posY + 1; yAbove <= mapSizeYm2; yAbove++) layerFullySolid[yAbove] = false;
                     break;
                 }
                 else // But sometimes we do.
@@ -629,7 +633,7 @@ public class NewGenTerra : ModStdWorldGen
             // Don't do this optimization where rivers exist.
             if (samples[localX, localZ].riverDistance <= 1)
             {
-                for (int posY = 1; posY <= mapsizeYm2; posY++)
+                for (int posY = 1; posY <= mapSizeYm2; posY++)
                 {
                     layerFullyEmpty[posY] = false;
                     layerFullySolid[posY] = false;
@@ -661,7 +665,7 @@ public class NewGenTerra : ModStdWorldGen
 
         int surfaceWaterId = 0;
 
-        // yTop never more than (mapSizey - 1), but leave the top block layer on the map always as air / for grass.
+        // yTop never more than (mapSizeY - 1), but leave the top block layer on the map always as air / for grass.
         int yTop = mapSizeY - 2;  
 
         while (yTop >= yBase && layerFullyEmpty[yTop]) yTop--; // Decrease yTop, we don't need to generate anything for fully empty (air layers).
@@ -796,11 +800,11 @@ public class NewGenTerra : ModStdWorldGen
         LandformMapByRegion.TryGetValue((regionZ * regionMapSize) + regionX, out LerpedWeightedIndex2DMap map);
         if (map != null) return map;
 
-        IntDataMap2D lmap = mapchunk.MapRegion.LandformMap;
+        IntDataMap2D lMap = mapchunk.MapRegion.LandformMap;
 
         // 2. Create
         map = LandformMapByRegion[(regionZ * regionMapSize) + regionX]
-            = new LerpedWeightedIndex2DMap(lmap.Data, lmap.Size, TerraGenConfig.landFormSmoothingRadius, lmap.TopLeftPadding, lmap.BottomRightPadding);
+            = new LerpedWeightedIndex2DMap(lMap.Data, lMap.Size, TerraGenConfig.landFormSmoothingRadius, lMap.TopLeftPadding, lMap.BottomRightPadding);
 
         return map;
     }
@@ -860,7 +864,7 @@ public class NewGenTerra : ModStdWorldGen
         }
     }
 
-    // Closesly matches the old two-noise distortion in a given seed, but is more fair to all angles.
+    // Closely matches the old two-noise distortion in a given seed, but is more fair to all angles.
     public VectorXZ NewDistortionNoise(double worldX, double worldZ)
     {
         double noiseX = worldX / 400.0;

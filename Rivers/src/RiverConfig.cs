@@ -86,4 +86,13 @@
 
     // If boulders and logs should generate near rivers.
     public bool boulders = true;
+
+    // If deposits should generate.
+    public bool riverDeposits = true;
+
+    // How much of the river bed should be clay.
+    public float clayDepositFrequency = 0.2f;
+
+    // If brown and red clay should be integrated.
+    public bool clayExpansion = true;
 }

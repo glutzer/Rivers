@@ -1,12 +1,16 @@
 ﻿using HarmonyLib;
+using Newtonsoft.Json.Linq;
 using ProtoBuf;
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+using Vintagestory.Common;
 using Vintagestory.GameContent;
 
 public class RiversMod : ModSystem
@@ -26,6 +30,94 @@ public class RiversMod : ModSystem
         return 0;
     }
 
+    public override void AssetsLoaded(ICoreAPI api)
+    {
+        if (RiverConfig.Loaded.clayExpansion)
+        {
+            ClayPatch(api);
+        }
+
+        if (RiverConfig.Loaded.riverDeposits)
+        {
+            AddOptionalAssets("alluvial", api.Assets as AssetManager);
+        }
+    }
+
+    public static void ClayPatch(ICoreAPI api)
+    {
+        AssetManager assetManager = api.Assets as AssetManager;
+
+        bool bricklayers = api.ModLoader.IsModEnabled("bricklayers");
+
+        // Get all clayforming recipes.
+        List<IAsset> assets = assetManager.GetMany("recipes/clayforming");
+
+        if (!bricklayers)
+        {
+            foreach (IAsset asset in assets)
+            {
+                // Get token of entire file.
+                JToken token = JToken.Parse(asset.ToText());
+
+                // Get ingredients array.
+                if (token["ingredient"]?["allowedVariants"] != null)
+                {
+                    // If it contains both blue and fire clay, add the other 2 variants.
+                    JArray array = token["ingredient"]["allowedVariants"] as JArray;
+
+                    bool blue = array.Any(x => x.ToString() == "blue");
+                    bool fire = array.Any(x => x.ToString() == "fire");
+
+                    if (blue && fire)
+                    {
+                        array.Add("brown");
+                        array.Add("red");
+
+                        // Set array.
+                        token["ingredient"]["allowedVariants"] = array;
+
+                        // Convert it back to string and to bytes.
+                        asset.Data = Encoding.UTF8.GetBytes(token.ToString());
+                    }
+                }
+            }
+        }
+
+        AddOptionalAssets("clay", assetManager);
+
+        if (!bricklayers)
+        {
+            AddOptionalAssets("claynobl", assetManager);
+        }
+    }
+
+    public static void AddOptionalAssets(string option, AssetManager assetManager)
+    {
+        string optionalpath = $"config/optional/{option}/";
+
+        List<IAsset> assets = assetManager.GetMany(optionalpath);
+
+        foreach (IAsset asset in assets)
+        {
+            AssetLocation location = asset.Location;
+
+            string path = location.ToString().Replace(optionalpath, "");
+
+            IAsset toChange = assetManager.TryGet(path);
+
+            if (toChange != null)
+            {
+                toChange.Data = new byte[asset.Data.Length];
+                asset.Data.CopyTo(toChange.Data, 0);
+            }
+            else
+            {
+                IAsset newAsset = new Asset(asset.Data, new AssetLocation(path), asset.Origin);
+                assetManager.Assets[new AssetLocation(path)] = newAsset;
+            }
+        }
+    }
+
     public override void Start(ICoreAPI api)
     {
         api.RegisterBlockClass("BlockRiverWaterWheel", typeof(BlockWaterWheel));
@@ -33,6 +125,11 @@ public class RiversMod : ModSystem
         api.RegisterBlockEntityBehaviorClass("BEBehaviorRiverWaterWheel", typeof(BEBehaviorWaterWheel));
 
         api.RegisterBlockBehaviorClass("riverblock", typeof(RiverBlockBehavior));
+
+        api.RegisterBlockClass("fullalluvialblock", typeof(FullAlluvialBlock));
+
+        if (RiverConfig.Loaded.clayExpansion) api.RegisterBlockClass("lightablechimney", typeof(LightableChimneyBehavior));
+        if (RiverConfig.Loaded.riverDeposits) api.RegisterBlockClass("muddygravel", typeof(MuddyGravelBlock));
     }
 
     public override void StartClientSide(ICoreClientAPI api)
@@ -205,7 +302,7 @@ public class RiverDebugCommand : ServerChatCommand
 
                     foreach (RiverNode node in river.nodes)
                     {
-                        AddWaypoint(wp, "x", new Vec3d(node.startPos.X + plateStart.X, 0, node.startPos.Y + plateStart.Y), player.PlayerUID, player, r, g, b, node.startSize.ToString(), false);
+                        AddWaypoint(wp, "x", new Vec3d(node.startPos.X + plateStart.X, 0, node.startPos.Y + plateStart.Y), player.PlayerUID, r, g, b, node.startSize.ToString(), false);
                     }
                 }
 
@@ -218,11 +315,11 @@ public class RiverDebugCommand : ServerChatCommand
                 {
                     if (zone.ocean)
                     {
-                        AddWaypoint(wp, "x", new Vec3d(plateStart.X + zone.localZoneCenterPosition.X, 0, plateStart.Y + zone.localZoneCenterPosition.Y), player.PlayerUID, player, 0, 100, 255, "Ocean", false);
+                        AddWaypoint(wp, "x", new Vec3d(plateStart.X + zone.localZoneCenterPosition.X, 0, plateStart.Y + zone.localZoneCenterPosition.Y), player.PlayerUID, 0, 100, 255, "Ocean", false);
                     }
                     else
                     {
-                        AddWaypoint(wp, "x", new Vec3d(plateStart.X + zone.localZoneCenterPosition.X, 0, plateStart.Y + zone.localZoneCenterPosition.Y), player.PlayerUID, player, 255, 150, 150, "Land", false);
+                        AddWaypoint(wp, "x", new Vec3d(plateStart.X + zone.localZoneCenterPosition.X, 0, plateStart.Y + zone.localZoneCenterPosition.Y), player.PlayerUID, 255, 150, 150, "Land", false);
                     }
                 }
 
@@ -238,7 +335,7 @@ public class RiverDebugCommand : ServerChatCommand
                     if (zone.ocean)
                     {
                         oceanTiles++;
-                        AddWaypoint(wp, "x", new Vec3d(plateStart.X + zone.localZoneCenterPosition.X, 0, plateStart.Y + zone.localZoneCenterPosition.Y), player.PlayerUID, player, 0, 100, 255, "Ocean", false);
+                        AddWaypoint(wp, "x", new Vec3d(plateStart.X + zone.localZoneCenterPosition.X, 0, plateStart.Y + zone.localZoneCenterPosition.Y), player.PlayerUID, 0, 100, 255, "Ocean", false);
                     }
                 }
 
@@ -256,7 +353,7 @@ public class RiverDebugCommand : ServerChatCommand
                     if (zone.coastal)
                     {
                         coastalTiles++;
-                        AddWaypoint(wp, "x", new Vec3d(plateStart.X + zone.localZoneCenterPosition.X, 0, plateStart.Y + zone.localZoneCenterPosition.Y), player.PlayerUID, player, 255, 100, 255, "Ocean", false);
+                        AddWaypoint(wp, "x", new Vec3d(plateStart.X + zone.localZoneCenterPosition.X, 0, plateStart.Y + zone.localZoneCenterPosition.Y), player.PlayerUID, 255, 100, 255, "Ocean", false);
                     }
                 }
 
@@ -285,7 +382,7 @@ public class RiverDebugCommand : ServerChatCommand
 
     public static void MapRiver(WaypointMapLayer wp, RiverSegment segment, int r, int g, int b, IPlayer player, Vec2d plateStart)
     {
-        AddWaypoint(wp, "x", new Vec3d(segment.startPos.X + plateStart.X, 0, segment.startPos.Y + plateStart.Y), player.PlayerUID, player, r, g, b, $"{segment.riverNode.startSize}");
+        AddWaypoint(wp, "x", new Vec3d(segment.startPos.X + plateStart.X, 0, segment.startPos.Y + plateStart.Y), player.PlayerUID, r, g, b, $"{segment.riverNode.startSize}");
 
         if (segment.riverNode.startSize > biggestRiver)
         {
@@ -297,7 +394,7 @@ public class RiverDebugCommand : ServerChatCommand
         riversMapped++;
     }
 
-    public static void AddWaypoint(WaypointMapLayer wp, string type, Vec3d worldPos, string playerUid, IPlayer player, int r, int g, int b, string name, bool pin = true)
+    public static void AddWaypoint(WaypointMapLayer wp, string type, Vec3d worldPos, string playerUid, int r, int g, int b, string name, bool pin = true)
     {
         wp.Waypoints.Add(new Waypoint
         {

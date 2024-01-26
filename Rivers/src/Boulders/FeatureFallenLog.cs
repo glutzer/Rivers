@@ -23,7 +23,7 @@ public class FeatureFallenLog : PartialFeature
         return posY > TerraGenConfig.seaLevel && riverDistance < 50 && !dry;
     }
 
-    public override void Generate(BlockPos blockPos, IServerChunk[] chunkData, LCGRandom rand, Vec2d chunkStart, Vec2d chunkEnd, IBlockAccessor blockAccessor, int rockId, bool dry)
+    public override void Generate(BlockPos blockPos, IServerChunk[] chunkData, LCGRandom rand, Vec2d chunkStart, Vec2d chunkEnd, IBlockAccessor blockAccessor, int rockId, bool dry, ushort[] heightMap)
     {
         int direction = rand.NextInt(2); // 0 - W/E, 1 - N/S.
         int logType;

@@ -33,7 +33,7 @@ public class PartialFeature
     /// <summary>
     /// Start and end coordinates are for the chunk being generated.
     /// </summary>
-    public virtual void Generate(BlockPos blockPos, IServerChunk[] chunkData, LCGRandom rand, Vec2d chunkStart, Vec2d chunkEnd, IBlockAccessor blockAccessor, int rockId, bool dry)
+    public virtual void Generate(BlockPos blockPos, IServerChunk[] chunkData, LCGRandom rand, Vec2d chunkStart, Vec2d chunkEnd, IBlockAccessor blockAccessor, int rockId, bool dry, ushort[] heightMap)
     {
 
     }

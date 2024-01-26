@@ -29,10 +29,8 @@ public class RiverGenerator
     }
 
     // Curbs segments to test.
-    public RiverSegment[] ValidateSegments(RiverSegment[] segments, double maxValleyWidth, double x, double z)
+    public void ValidateSegments(RiverSegment[] segments, double maxValleyWidth, double x, double z, List<RiverSegment> valid)
     {
-        List<RiverSegment> valid = new();
-
         double distX = riverDistortionX.GetNoise(x, z);
         double distZ = riverDistortionZ.GetNoise(x, z);
         Vec2d point = new(x + (distX * strength), z + (distZ * strength));
@@ -60,7 +58,7 @@ public class RiverGenerator
             Vec2d lerpedStart = new();
             Vec2d lerpedEnd = new();
 
-            double maxDistance = 5000;
+            double minDistance = 5000;
 
             for (int i = 0; i < connectors.Length; i++)
             {
@@ -105,16 +103,14 @@ public class RiverGenerator
                 double distance = RiverMath.DistanceToLine(point, lerpedStart, lerpedEnd);
                 distance -= riverSize;
 
-                maxDistance = Math.Min(maxDistance, distance);
+                minDistance = Math.Min(minDistance, distance);
             }
 
-            if (maxDistance <= maxValleyWidth + 24 + (strength * 4))
+            if (minDistance <= maxValleyWidth + strength * 2 + 32 && !valid.Contains(segment))
             {
                 valid.Add(segment);
             }
         }
-
-        return valid.ToArray();
     }
 
     public RiverSample SampleRiver(RiverSegment[] segments, double x, double z)

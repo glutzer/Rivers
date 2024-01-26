@@ -9,7 +9,7 @@ public class FeatureTinyBoulder : FeatureRiverBoulder
     {
     }
 
-    public override void Generate(BlockPos blockPos, IServerChunk[] chunkData, LCGRandom rand, Vec2d chunkStart, Vec2d chunkEnd, IBlockAccessor blockAccessor, int rockId, bool dry)
+    public override void Generate(BlockPos blockPos, IServerChunk[] chunkData, LCGRandom rand, Vec2d chunkStart, Vec2d chunkEnd, IBlockAccessor blockAccessor, int rockId, bool dry, ushort[] heightMap)
     {
         double xSize = hSize + rand.NextDouble() * hSizeVariance;
         double ySize = hSize + rand.NextDouble() * hSizeVariance;
@@ -35,11 +35,13 @@ public class FeatureTinyBoulder : FeatureRiverBoulder
                 if (y > TerraGenConfig.seaLevel - 3 && !dry)
                 {
                     tempPos.Y++;
-                    blockAccessor.SetBlock(decor.Id, tempPos);
+                    if (blockAccessor.GetBlock(tempPos).Replaceable > 5000) blockAccessor.SetBlock(decor.Id, tempPos);
 
                     // Remove floating moss.
+                    /*
                     tempPos.Y++;
                     if (blockAccessor.GetBlock(tempPos).Id == decor.Id) blockAccessor.SetBlock(0, tempPos);
+                    */
                 }
 
                 /*

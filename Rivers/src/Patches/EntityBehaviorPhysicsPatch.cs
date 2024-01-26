@@ -79,6 +79,8 @@ public class EntityBehaviorPhysicsPatch
 
                     float density = 300f / GameMath.Clamp(entity.MaterialDensity, 750f, 2500f) * (60 * dt); // Calculate density.
 
+                    if (controls.ShiftKey) density /= 2;
+
                     pos.Motion.Add(flowVectors[LocalChunkIndex2D((int)pos.X % 32, (int)pos.Z % 32)] * 0.0025 * density * riverSpeed, 0, flowVectors[LocalChunkIndex2D((int)pos.X % 32, (int)pos.Z % 32) + 1024] * 0.0025 * density * riverSpeed);
                 }
             }

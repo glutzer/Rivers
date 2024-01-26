@@ -62,4 +62,18 @@ public class RiverMath
         double radians = degrees * (Math.PI / 180);
         return new Vec2d(Math.Cos(radians), Math.Sin(radians));
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static float DistanceTo(Vec3d posA, Vec3d posB, double xSize, double zSize)
+    {
+        double x = posA.X - posB.X;
+        x /= xSize;
+
+        double y = posA.Y - posB.Y;
+
+        double z = posA.Z - posB.Z;
+        z /= zSize;
+
+        return (float)Math.Sqrt(x * x + y * y + z * z);
+    }
 }

@@ -20,7 +20,7 @@ public class GeneratePartialFeatures : WorldGenPartial
     {
         sapi = api;
 
-        if (TerraGenConfig.DoDecorationPass && RiverConfig.Loaded.boulders)
+        if (TerraGenConfig.DoDecorationPass)
         {
             sapi.Event.InitWorldGenerator(InitWorldGenerator, "standard");
             sapi.Event.ChunkColumnGeneration(ChunkColumnGeneration, EnumWorldGenPass.Vegetation, "standard");
@@ -64,15 +64,48 @@ public class GeneratePartialFeatures : WorldGenPartial
             noise = new Noise(0, 0.05f, 2)
         };
 
-        features.Add(log);
-        features.Add(riverBoulder);
-        features.Add(tinyBoulder);
+        /*
+        AlluvialFeature sand = new(sapi, "waterwheels:alluvialblock-blueclay-full")
+        {
+            hSize = 2,
+            hSizeVariance = 5,
+            tries = 3,
+            chance = 0.1f
+        };
+        */
+
+        /*
+        SurfaceAlluvialFeature sand = new(sapi, "sludgygravel")
+        {
+            hSize = 2,
+            hSizeVariance = 5,
+            tries = 5,
+            chance = 0.2f
+        };
+        */
+
+        /*
+        if (RiverConfig.Loaded.riverDeposits)
+        {
+            features.Add(sand);
+        }
+        */
+
+        if (RiverConfig.Loaded.boulders)
+        {
+            features.Add(log);
+            features.Add(riverBoulder);
+            features.Add(tinyBoulder);
+        }
     }
 
     public override void GeneratePartial(IServerChunk[] chunks, int mainChunkX, int mainChunkZ, int generatingChunkX, int generatingChunkZ)
     {
+        chunkRand.InitPositionSeed(generatingChunkX, generatingChunkZ);
+
         IMapChunk mapChunk = sapi.WorldManager.GetMapChunk(generatingChunkX, generatingChunkZ);
 
+        ushort[] ownHeightMap = chunks[0].MapChunk.WorldGenTerrainHeightMap;
         ushort[] heightMap = mapChunk.WorldGenTerrainHeightMap;
         ushort[] riverMap = mapChunk.GetModdata<ushort[]>("riverDistance");
 
@@ -96,8 +129,6 @@ public class GeneratePartialFeatures : WorldGenPartial
 
         foreach (PartialFeature feature in features)
         {
-            chunkRand.InitPositionSeed(generatingChunkX, generatingChunkZ);
-
             for (int x = 0; x < feature.tries; x++)
             {
                 if (chunkRand.NextFloat() >= feature.chance) continue;
@@ -113,7 +144,7 @@ public class GeneratePartialFeatures : WorldGenPartial
 
                 int rockId = mapChunk.TopRockIdMap[(randZ * chunkSize) + randX];
 
-                feature.Generate(pos, chunks, chunkRand, new Vec2d(mainChunkX * chunkSize, mainChunkZ * chunkSize), new Vec2d((mainChunkX * chunkSize) + chunkSize - 1, (mainChunkZ * chunkSize) + chunkSize - 1), blockAccessor, rockId, dry);
+                feature.Generate(pos, chunks, chunkRand, new Vec2d(mainChunkX * chunkSize, mainChunkZ * chunkSize), new Vec2d((mainChunkX * chunkSize) + chunkSize - 1, (mainChunkZ * chunkSize) + chunkSize - 1), blockAccessor, rockId, dry, ownHeightMap);
             }
         }
     }

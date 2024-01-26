@@ -15,7 +15,7 @@ public class FeatureRiverBoulder : PartialFeature
         multi = sapi.WorldManager.MapSizeY / 256f;
     }
 
-    public override void Generate(BlockPos blockPos, IServerChunk[] chunkData, LCGRandom rand, Vec2d chunkStart, Vec2d chunkEnd, IBlockAccessor blockAccessor, int rockId, bool dry)
+    public override void Generate(BlockPos blockPos, IServerChunk[] chunkData, LCGRandom rand, Vec2d chunkStart, Vec2d chunkEnd, IBlockAccessor blockAccessor, int rockId, bool dry, ushort[] heightMap)
     {
         double xSize = hSize + (rand.NextFloat() * hSizeVariance);
         double ySize = hSize;
@@ -44,11 +44,13 @@ public class FeatureRiverBoulder : PartialFeature
                 if (y > TerraGenConfig.seaLevel - 3 && !dry)
                 {
                     tempPos.Y++;
-                    blockAccessor.SetBlock(decor.Id, tempPos);
+                    if (blockAccessor.GetBlock(tempPos).Replaceable > 5000) blockAccessor.SetBlock(decor.Id, tempPos);
 
                     // Remove floating moss.
+                    /*
                     tempPos.Y++;
                     if (blockAccessor.GetBlock(tempPos).Id == decor.Id) blockAccessor.SetBlock(0, tempPos);
+                    */
                 }
 
                 /*
