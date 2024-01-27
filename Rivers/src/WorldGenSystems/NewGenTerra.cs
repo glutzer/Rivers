@@ -428,7 +428,7 @@ public class NewGenTerra : ModStdWorldGen
                 {
                     foreach (RiverSegment segment in node.segments)
                     {
-                        if (RiverMath.DistanceToLine(localStart, segment.startPos, segment.endPos) < maxValleyWidth + segment.riverNode.startSize + 300)
+                        if (RiverMath.DistanceToLine(localStart, segment.startPos, segment.endPos) < maxValleyWidth + segment.riverNode.startSize + 512)
                         {
                             validSegments.Add(segment); // Later check for duplicates. If the distance to another segment is too great it shouldn't have to be here.
                         }
@@ -496,7 +496,7 @@ public class NewGenTerra : ModStdWorldGen
             int yMaximum;
             double valleyMax = valleyArray[(localZ * 32) + localX];
 
-            if (riverDistance[chunkIndex2d] < valleyMax + 10)
+            if (riverDistance[chunkIndex2d] < valleyMax)
             {
                 if (valleyMax < 0) valleyMax = 0;
 
@@ -534,8 +534,7 @@ public class NewGenTerra : ModStdWorldGen
 
             // Create the directional compression effect.
             VectorXZ dist = NewDistortionNoise(worldX, worldZ);
-            VectorXZ distTerrain = ApplyIsotropicDistortionThreshold(dist * terrainDistortionMultiplier, terrainDistortionThreshold,
-                terrainDistortionMultiplier * maxDistortionAmount);
+            VectorXZ distTerrain = ApplyIsotropicDistortionThreshold(dist * terrainDistortionMultiplier, terrainDistortionThreshold, terrainDistortionMultiplier * maxDistortionAmount);
 
             // Get Y distortion from oceanicity and upheaval.
             float upheavalStrength = GameMath.BiLerp(upheavalMapUpLeft, upheavalMapUpRight, upheavalMapBotLeft, upheavalMapBotRight, localX * chunkBlockDelta, localZ * chunkBlockDelta);
@@ -632,7 +631,7 @@ public class NewGenTerra : ModStdWorldGen
             }
 
             // Don't do this optimization where rivers exist.
-            if (samples[localX, localZ].riverDistance <= 1)
+            if (samples[localX, localZ].riverDistance <= 0)
             {
                 for (int posY = 1; posY <= mapSizeYm2; posY++)
                 {
@@ -700,7 +699,7 @@ public class NewGenTerra : ModStdWorldGen
                 // RIVER DATA ----------
                 RiverSample sample = samples[localX, localZ];
 
-                if (sample.riverDistance <= 1)
+                if (sample.riverDistance <= 0)
                 {
                     int bankFactorBlocks = (int)(sample.bankFactor * aboveSeaLevel);
                     int baseline = baseSeaLevel + heightBoost;

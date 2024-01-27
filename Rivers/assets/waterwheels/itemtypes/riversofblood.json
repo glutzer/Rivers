@@ -65,13 +65,8 @@
   },
   "attackpower": 5,
   "durability": 3000,
-  "creativeinventoryByType": {
-    "*": {
-      "general": [ "*" ],
-      "items": [ "*" ],
-      "tools": [ "*" ],
-      "clutterByType": { "*-ruined": [ "*" ] }
-    }
+  "creativeinventory": {
+    "clutter": [ "*" ]
   },
   "guiTransform": {
     "translation": {
