@@ -1,0 +1,125 @@
+{
+  "code": "riversofblood",
+  "damagedby": [ "blockbreaking", "attacking" ],
+  "tool": "sword",
+  "class": "RiversOfBlood",
+  "attributes": {
+    "toolrackTransform": {
+      "translation": {
+        "x": 0.2,
+        "y": 0.9
+      },
+      "rotation": {
+        "y": 180,
+        "z": 1
+      },
+      "scale": 1.66
+    },
+    "groundStorageTransform": {
+      "translation": {
+        "x": 0.24,
+        "y": 0.34,
+        "z": 0
+      },
+      "rotation": {
+        "x": 24,
+        "y": 60,
+        "z": -88
+      },
+      "scale": 0.9
+    }
+  },
+  "behaviors": [
+    {
+      "name": "GroundStorable",
+      "properties": {
+        "layout": "WallHalves",
+        "wallOffY": 1,
+        "sprintKey": true,
+        "selectionBox": {
+          "x1": 0,
+          "y1": 0,
+          "z1": 0,
+          "x2": 1,
+          "y2": 0.1,
+          "z2": 1
+        },
+        "collisionBox": {
+          "x1": 0,
+          "y1": 0,
+          "z1": 0,
+          "x2": 0,
+          "y2": 0,
+          "z2": 0
+        }
+      }
+    }
+  ],
+  "shape": { "base": "riversofblood" },
+  "heldTpHitAnimation": "falx",
+  "attackRange": 5,
+  "tooltier": 5,
+  "miningspeed": {
+    "wood": 3,
+    "leaves": 3
+  },
+  "attackpower": 5,
+  "durability": 3000,
+  "creativeinventoryByType": {
+    "*": {
+      "general": [ "*" ],
+      "items": [ "*" ],
+      "tools": [ "*" ],
+      "clutterByType": { "*-ruined": [ "*" ] }
+    }
+  },
+  "guiTransform": {
+    "translation": {
+      "x": 0,
+      "y": 15,
+      "z": 0
+    },
+    "rotation": {
+      "x": 30,
+      "y": -40,
+      "z": 130
+    },
+    "origin": {
+      "x": 0.5,
+      "y": 0.5,
+      "z": 0
+    },
+    "scale": 1.7
+  },
+  "groundTransform": {
+    "translation": {
+      "x": 0,
+      "y": 0.05,
+      "z": 0
+    },
+    "rotation": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "origin": {
+      "x": 0.5,
+      "y": 0,
+      "z": 0.5
+    },
+    "scale": 3.6
+  },
+  "tpHandTransform": {
+    "translation": {
+      "x": -1.4,
+      "y": -0.8,
+      "z": -1.4
+    },
+    "rotation": {
+      "x": -90,
+      "y": 0,
+      "z": 0
+    },
+    "scale": 0.56
+  }
+}

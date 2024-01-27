@@ -68,7 +68,7 @@ public class FeatureRiverBoulder : PartialFeature
 
     public override bool CanGenerate(int localX, int posY, int localZ, ushort riverDistance, bool dry)
     {
-        return riverDistance < 10 && posY < TerraGenConfig.seaLevel + 5;
+        return riverDistance <= 0 && posY < TerraGenConfig.seaLevel + 2;
     }
 
     public static double DistanceToEllipsoid(double worldX, double worldY, double worldZ, double centerX, double centerY, double centerZ, double xSize, double ySize, double zSize)

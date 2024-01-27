@@ -4,7 +4,7 @@
 
     // When forking move at these angles.
     public int minForkAngle = 10;
-    public int forkVaration = 45;
+    public int forkVaration = 40;
 
     // When adding another node change by 0 to this angle left or right.
     public int normalAngle = 20;
@@ -35,7 +35,7 @@
     public int riverSpawnChance = 10;
 
     // Chance for node to split.
-    public int riverSplitChance = 70;
+    public int riverSplitChance = 50;
 
     // Chance for a lake when nodes stop.
     public int lakeChance = 15;
@@ -69,7 +69,7 @@
 
     // Base valley height and the maximum amount to add to it.
     public int riverFloorBase = -1;
-    public double riverFloorVariation = 4;
+    public double riverFloorVariation = 3;
 
     // How many blocks of submerged land, relative to default height, a spot is considered an ocean at.
     public float oceanThreshold = 30;

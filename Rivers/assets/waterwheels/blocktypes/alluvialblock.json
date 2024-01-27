@@ -22,7 +22,7 @@
     }
   },
   "dropsByType": {
-    "*-blueclay-full": [
+    "*-blueclay": [
       {
         "type": "item",
         "code": "game:clay-blue",
@@ -32,7 +32,7 @@
         }
       }
     ],
-    "*-fireclay-full": [
+    "*-fireclay": [
       {
         "type": "item",
         "code": "game:clay-fire",

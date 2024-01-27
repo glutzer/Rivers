@@ -68,12 +68,14 @@
   <None Remove="assets\waterwheels\blocktypes\alluvialblock.json" />
   <None Remove="assets\waterwheels\blocktypes\sheetmoss.json" />
   <None Remove="assets\waterwheels\config\optional\clay\alluvialblock.json" />
+  <None Remove="assets\waterwheels\itemtypes\riversofblood.json" />
   <None Remove="assets\waterwheels\lang\ja.json" />
   <None Remove="assets\waterwheels\recipes\grid\waterwheels.json" />
   <None Remove="assets\waterwheels\shapes\block\brownclay.json" />
   <None Remove="assets\waterwheels\shapes\block\wood\waterwheel-base.json" />
   <None Remove="assets\waterwheels\shapes\block\wood\waterwheellarge.json" />
   <None Remove="assets\waterwheels\shapes\block\wood\waterwheelsmall.json" />
+  <None Remove="assets\waterwheels\shapes\riversofblood.json" />
   <None Remove="assets\waterwheels\textures\alluvialdeposit.png" />
   <None Remove="assets\waterwheels\textures\sheetmoss.png" />
   <None Remove="assets\waterwheels\worldgen\blockpatches\saltseaweed.json" />

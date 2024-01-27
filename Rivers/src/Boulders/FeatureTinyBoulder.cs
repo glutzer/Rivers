@@ -59,6 +59,6 @@ public class FeatureTinyBoulder : FeatureRiverBoulder
 
     public override bool CanGenerate(int localX, int posY, int localZ, ushort riverDistance, bool dry)
     {
-        return riverDistance < 20 && posY < TerraGenConfig.seaLevel + 10;
+        return riverDistance <= 0 && posY < TerraGenConfig.seaLevel + 2;
     }
 }

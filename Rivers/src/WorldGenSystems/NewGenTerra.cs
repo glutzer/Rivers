@@ -316,24 +316,21 @@ public class NewGenTerra : ModStdWorldGen
         IMapChunk mapChunk = chunks[0].MapChunk;
         const int chunkSize = GlobalConstants.ChunkSize;
 
-        int upheavalMapUpLeft = 0;
-        int upheavalMapUpRight = 0;
-        int upheavalMapBotLeft = 0;
-        int upheavalMapBotRight = 0;
-
-        IntDataMap2D climateMap = chunks[0].MapChunk.MapRegion.ClimateMap;
-        IntDataMap2D oceanMap = chunks[0].MapChunk.MapRegion.OceanMap;
         int regionChunkSize = sapi.WorldManager.RegionSize / chunkSize;
-        float cFac = (float)climateMap.InnerSize / regionChunkSize;
-
         int rlX = chunkX % regionChunkSize;
         int rlZ = chunkZ % regionChunkSize;
+        int rockId = GlobalConfig.defaultRockId;
 
+        // Get climate data.
+        IntDataMap2D climateMap = chunks[0].MapChunk.MapRegion.ClimateMap;
+        float cFac = (float)climateMap.InnerSize / regionChunkSize;
         int climateUpLeft = climateMap.GetUnpaddedInt((int)(rlX * cFac), (int)(rlZ * cFac));
         int climateUpRight = climateMap.GetUnpaddedInt((int)((rlX * cFac) + cFac), (int)(rlZ * cFac));
         int climateBotLeft = climateMap.GetUnpaddedInt((int)(rlX * cFac), (int)((rlZ * cFac) + cFac));
         int climateBotRight = climateMap.GetUnpaddedInt((int)((rlX * cFac) + cFac), (int)((rlZ * cFac) + cFac));
 
+        // Get ocean data.
+        IntDataMap2D oceanMap = chunks[0].MapChunk.MapRegion.OceanMap;
         int oceanUpLeft = 0;
         int oceanUpRight = 0;
         int oceanBotLeft = 0;
@@ -347,7 +344,12 @@ public class NewGenTerra : ModStdWorldGen
             oceanBotRight = oceanMap.GetUnpaddedInt((int)((rlX * oFac) + oFac), (int)((rlZ * oFac) + oFac));
         }
 
+        // Get upheaval data.
         IntDataMap2D upheavalMap = chunks[0].MapChunk.MapRegion.UpheavelMap;
+        int upheavalMapUpLeft = 0;
+        int upheavalMapUpRight = 0;
+        int upheavalMapBotLeft = 0;
+        int upheavalMapBotRight = 0;
         if (upheavalMap != null)
         {
             float uFac = (float)upheavalMap.InnerSize / regionChunkSize;
@@ -357,7 +359,6 @@ public class NewGenTerra : ModStdWorldGen
             upheavalMapBotRight = upheavalMap.GetUnpaddedInt((int)((rlX * uFac) + uFac), (int)((rlZ * uFac) + uFac));
         }
 
-        int rockID = GlobalConfig.defaultRockId;
         float oceanicityFac = sapi.WorldManager.MapSizeY / 256 * 0.33333f; // At a map height of 255, submerge land by up to 85 blocks.
 
         IntDataMap2D landformMap = mapChunk.MapRegion.LandformMap;
@@ -655,7 +656,7 @@ public class NewGenTerra : ModStdWorldGen
                     chunkBlockData = chunks[yBase / chunkSize].Data;
                 }
 
-                chunkBlockData.SetBlockBulk(yBase % chunkSize * chunkSize * chunkSize, chunkSize, chunkSize, rockID);
+                chunkBlockData.SetBlockBulk(yBase % chunkSize * chunkSize * chunkSize, chunkSize, chunkSize, rockId);
             }
             else break;
         }
@@ -680,10 +681,10 @@ public class NewGenTerra : ModStdWorldGen
             for (int localX = 0; localX < chunkSize; localX++)
             {
                 ColumnResult columnResult = columnResults[mapIndex];
-                int waterID = columnResult.WaterBlockID;
-                surfaceWaterId = waterID;
+                int waterId = columnResult.WaterBlockID;
+                surfaceWaterId = waterId;
 
-                if (yBase < seaLevel && waterID != GlobalConfig.saltWaterBlockId && !columnResult.ColumnBlockSolidities[seaLevel - 1]) // Should surface water be lake ice? Relevant only for fresh water and only if this particular XZ column has a non-solid block at sea-level.
+                if (yBase < seaLevel && waterId != GlobalConfig.saltWaterBlockId && !columnResult.ColumnBlockSolidities[seaLevel - 1]) // Should surface water be lake ice? Relevant only for fresh water and only if this particular XZ column has a non-solid block at sea-level.
                 {
                     int temp = (GameMath.BiLerpRgbColor(localX * chunkBlockDelta, localZ * chunkBlockDelta, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight) >> 16) & 0xFF;
                     float distort = (float)distort2dx.Noise((chunkX * chunkSize) + localX, worldZ) / 20f;
@@ -715,7 +716,7 @@ public class NewGenTerra : ModStdWorldGen
                         {
                             terrainHeightMap[mapIndex] = (ushort)posY;
                             rainHeightMap[mapIndex] = (ushort)posY;
-                            chunkBlockData[ChunkIndex3d(localX, localY, localZ)] = rockID;
+                            chunkBlockData[ChunkIndex3d(localX, localY, localZ)] = rockId;
                         }
                         else if (posY < seaLevel)
                         {
@@ -727,7 +728,7 @@ public class NewGenTerra : ModStdWorldGen
                             }
                             else
                             {
-                                blockId = waterID;
+                                blockId = waterId;
                             }
 
                             chunkBlockData.SetFluid(ChunkIndex3d(localX, localY, localZ), blockId);
@@ -749,7 +750,7 @@ public class NewGenTerra : ModStdWorldGen
                         {
                             terrainHeightMap[mapIndex] = (ushort)posY;
                             rainHeightMap[mapIndex] = (ushort)posY;
-                            chunkBlockData[ChunkIndex3d(localX, localY, localZ)] = rockID;
+                            chunkBlockData[ChunkIndex3d(localX, localY, localZ)] = rockId;
                         }
                         else if (posY < seaLevel)
                         {
@@ -761,7 +762,7 @@ public class NewGenTerra : ModStdWorldGen
                             }
                             else
                             {
-                                blockId = waterID;
+                                blockId = waterId;
                             }
 
                             chunkBlockData.SetFluid(ChunkIndex3d(localX, localY, localZ), blockId);

@@ -130,6 +130,8 @@ public class RiversMod : ModSystem
 
         if (RiverConfig.Loaded.clayExpansion) api.RegisterBlockClass("lightablechimney", typeof(LightableChimneyBehavior));
         if (RiverConfig.Loaded.riverDeposits) api.RegisterBlockClass("muddygravel", typeof(MuddyGravelBlock));
+
+        api.RegisterItemClass("RiversOfBlood", typeof(RiversOfBlood));
     }
 
     public override void StartClientSide(ICoreClientAPI api)
