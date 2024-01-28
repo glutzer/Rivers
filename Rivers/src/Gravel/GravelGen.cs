@@ -25,9 +25,13 @@ public class GravelGen : ModStdWorldGen
         base.StartServerSide(api);
 
         sapi = api;
-        sapi.Event.InitWorldGenerator(InitWorldGen, "standard");
-        sapi.Event.GetWorldgenBlockAccessor(OnWorldGenBlockAccessor);
-        sapi.Event.ChunkColumnGeneration(OnChunkColumnGen, EnumWorldGenPass.Terrain, "standard");
+
+        if (RiverConfig.Loaded.gravel)
+        {
+            sapi.Event.InitWorldGenerator(InitWorldGen, "standard");
+            sapi.Event.GetWorldgenBlockAccessor(OnWorldGenBlockAccessor);
+            sapi.Event.ChunkColumnGeneration(OnChunkColumnGen, EnumWorldGenPass.Terrain, "standard");
+        }
     }
 
     private void OnWorldGenBlockAccessor(IChunkProviderThread chunkProvider)

@@ -149,25 +149,3 @@ public class GeneratePartialFeatures : WorldGenPartial
         }
     }
 }
-
-/*
-public class BlockLayerPostfix
-{
-    [HarmonyPatch(typeof(GenBlockLayers))]
-    [HarmonyPatch("OnChunkColumnGeneration")]
-    public static class LogHeightPostfix
-    {
-        [HarmonyPostfix]
-        public static void Postfix(IChunkColumnGenerateRequest request)
-        {
-            IMapChunk chunk = request.Chunks[0].MapChunk;
-
-            ushort[] newMap = new ushort[32 * 32];
-
-            chunk.WorldGenTerrainHeightMap.CopyTo(newMap, 0);
-
-            chunk.SetModdata("shm", newMap);
-        }
-    }
-}
-*/

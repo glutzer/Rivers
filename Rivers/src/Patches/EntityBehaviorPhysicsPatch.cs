@@ -110,7 +110,7 @@ public class EntityBehaviorPhysicsPatch
 
                 if (flowVectors != null)
                 {
-                    __instance.SidedPos.Motion.Add(flowVectors[LocalChunkIndex2D((int)__instance.SidedPos.X % 32, (int)__instance.SidedPos.Z % 32)] * 0.01 * riverSpeed, 0, flowVectors[LocalChunkIndex2D((int)__instance.SidedPos.X % 32, (int)__instance.SidedPos.Z % 32) + 1024] * 0.01 * riverSpeed);
+                    __instance.SidedPos.Motion.Add(flowVectors[LocalChunkIndex2D((int)__instance.SidedPos.X % 32, (int)__instance.SidedPos.Z % 32)] * 0.01 * riverSpeed * 2, 0, flowVectors[LocalChunkIndex2D((int)__instance.SidedPos.X % 32, (int)__instance.SidedPos.Z % 32) + 1024] * 0.01 * riverSpeed * 2);
                 }
             }
         }

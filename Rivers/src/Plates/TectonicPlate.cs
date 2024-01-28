@@ -334,13 +334,6 @@ public class TectonicPlate
             double angle1 = angle + (config.minForkAngle + rand.NextInt(config.forkVaration));
             double angle2 = angle - (config.minForkAngle + rand.NextInt(config.forkVaration));
 
-            /*
-            if (angle1 > 360) angle1 -= 360;
-            if (angle1 < 0) angle1 += 360;
-            if (angle2 > 360) angle2 -= 360;
-            if (angle2 < 0) angle2 += 360;
-            */
-
             generationQueue.Enqueue(new GenerationRequest(angle1, endPos, stage + 1, riverNode, nodeList, errorLevel));
             generationQueue.Enqueue(new GenerationRequest(angle2, endPos, stage + 1, riverNode, nodeList, errorLevel));
             return true;
@@ -351,11 +344,6 @@ public class TectonicPlate
             while (sign == 0) sign = -1 + rand.NextInt(3);
 
             double angle1 = angle - (rand.NextInt(config.normalAngle) * sign);
-
-            /*
-            if (angle1 > 360) angle1 -= 360;
-            if (angle1 < 0) angle1 += 360;
-            */
 
             generationQueue.Enqueue(new GenerationRequest(angle1, endPos, stage + 1, riverNode, nodeList, errorLevel));
             return true;

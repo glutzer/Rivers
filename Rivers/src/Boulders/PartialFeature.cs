@@ -86,7 +86,7 @@ public class FeatureBoundingBox
         if (start.Z > end.Z) return false;
 
         if (start.Y < 0) start.Y = 0;
-        //if (end.Y > 380) end.Y = 380; See if this can be set higher
+        //if (end.Y > 380) end.Y = 380; See if this can be set higher.
 
         if (start.Y > end.Y) return false;
 

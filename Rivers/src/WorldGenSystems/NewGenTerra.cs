@@ -29,10 +29,8 @@ public class NewGenTerra : ModStdWorldGen
     public int baseSeaLevel;
     public int heightBoost;
     public float topFactor;
-
     public Noise valleyNoise = new(0, 0.0008f, 2);
     public Noise floorNoise = new(0, 0.0008f, 1);
-
     public double maxValleyWidth;
     public int riverFloorBase;
     public double riverFloorVariation;
@@ -124,8 +122,6 @@ public class NewGenTerra : ModStdWorldGen
         heightBoost = RiverConfig.Loaded.heightBoost;
         topFactor = RiverConfig.Loaded.topFactor;
         maxValleyWidth = RiverConfig.Loaded.maxValleyWidth;
-        riverFloorBase = RiverConfig.Loaded.riverFloorBase + baseSeaLevel - 1;
-        riverFloorVariation = RiverConfig.Loaded.riverFloorVariation;
 
         riverGenerator = new RiverGenerator(sapi);
 
@@ -150,16 +146,19 @@ public class NewGenTerra : ModStdWorldGen
         terrainNoise = NewNormalizedSimplexFractalNoise.FromDefaultOctaves(
             terrainGenOctaves, 0.0005 * NewSimplexNoiseLayer.OldToNewFrequency / noiseScale, 0.9, sapi.WorldManager.Seed
         );
+
         distort2dx = new SimplexNoise(
             new double[] { 55, 40, 30, 10 },
             ScaleAdjustedFreqs(new double[] { 1 / 5.0, 1 / 2.50, 1 / 1.250, 1 / 0.65 }, noiseScale),
             sapi.World.Seed + 9876 + 0
         );
+
         distort2dz = new SimplexNoise(
             new double[] { 55, 40, 30, 10 },
             ScaleAdjustedFreqs(new double[] { 1 / 5.0, 1 / 2.50, 1 / 1.250, 1 / 0.65 }, noiseScale),
             sapi.World.Seed + 9876 + 2
         );
+
         geoUpheavalNoise = new NormalizedSimplexNoise(
             new double[] { 55, 40, 30, 15, 7, 4 },
             ScaleAdjustedFreqs(new double[] {
@@ -179,10 +178,12 @@ public class NewGenTerra : ModStdWorldGen
             LerpedThresholds = new double[terrainGenOctaves],
             landformWeights = new float[landType.GetStaticField<LandformsWorldProperty>("landforms").LandFormsByIndex.Length]
         });
+
         columnResults = new ColumnResult[chunksize * chunksize];
         layerFullyEmpty = new bool[sapi.WorldManager.MapSizeY];
         layerFullySolid = new bool[sapi.WorldManager.MapSizeY];
         taperMap = new WeightedTaper[chunksize * chunksize];
+
         for (int i = 0; i < chunksize * chunksize; i++) columnResults[i].ColumnBlockSolidities = new BitArray(sapi.WorldManager.MapSizeY);
 
         borderIndicesByCardinal = new int[8];
@@ -307,11 +308,41 @@ public class NewGenTerra : ModStdWorldGen
         {
             landforms = landType.GetStaticField<LandformsWorldProperty>("landforms");
             terrainYThresholds = new float[landforms.LandFormsByIndex.Length][];
-            for (int i = 0; i < landforms.LandFormsByIndex.Length; i++) terrainYThresholds[i] = landforms.LandFormsByIndex[i].TerrainYThresholds;
+            for (int i = 0; i < landforms.LandFormsByIndex.Length; i++)
+            {
+                // Get river landform and adjust it to new world height.
+                if (landforms.LandFormsByIndex[i].Code.ToString() == "game:riverlandform")
+                {
+                    LandformVariant riverLandform = landforms.LandFormsByIndex[i];
+
+                    riverIndex = i;
+                    riverVariant = riverLandform;
+
+                    float modifier = 256f / sapi.WorldManager.MapSizeY;
+
+                    float seaLevelThreshold = 0.4313725490196078f;
+
+                    float blockThreshold = 0.4313725490196078f / 110 * modifier;
+
+                    riverLandform.TerrainYKeyPositions[0] = seaLevelThreshold + (blockThreshold * 1);
+                    riverLandform.TerrainYKeyPositions[1] = seaLevelThreshold + (blockThreshold * 2);
+                    riverLandform.TerrainYKeyPositions[2] = seaLevelThreshold + (blockThreshold * 3);
+                    riverLandform.TerrainYKeyPositions[3] = seaLevelThreshold + (blockThreshold * 4);
+                    riverLandform.TerrainYKeyPositions[3] = seaLevelThreshold + (blockThreshold * 6);
+
+                    // Re-lerp with adjusted heights.
+                    riverLandform.CallMethod("LerpThresholds", sapi.WorldManager.MapSizeY);
+                }
+
+                terrainYThresholds[i] = landforms.LandFormsByIndex[i].TerrainYThresholds;
+            }
         }
 
         Generate(request.Chunks, request.ChunkX, request.ChunkZ, request.RequiresChunkBorderSmoothing);
     }
+
+    public int riverIndex;
+    public LandformVariant riverVariant;
 
     private void Generate(IServerChunk[] chunks, int chunkX, int chunkZ, bool requiresChunkBorderSmoothing)
     {
@@ -400,7 +431,7 @@ public class NewGenTerra : ModStdWorldGen
 
         layerFullyEmpty[mapSizeY - 1] = false; // The top block is always empty (air), leaving space for grass, snow layer etc.
 
-        // RIVER DATA ----------
+        // RIVERSTUFF.
 
         // Get cached plate.
         int plateX = chunkX / chunksInPlate;
@@ -426,7 +457,7 @@ public class NewGenTerra : ModStdWorldGen
 
             foreach (RiverNode node in river.nodes)
             {
-                if (RiverMath.DistanceToLine(localStart, node.startPos, node.endPos) < maxValleyWidth + 128) // Consider a river of 100 size, 100 distortion.
+                if (RiverMath.DistanceToLine(localStart, node.startPos, node.endPos) < maxValleyWidth + 512) // Consider a river of 100 size, 100 distortion.
                 {
                     foreach (RiverSegment segment in node.segments)
                     {
@@ -451,7 +482,18 @@ public class NewGenTerra : ModStdWorldGen
             {
                 for (int z = 0; z < 32; z++)
                 {
-                    valleyArray[(z * 32) + x] = maxValleyWidth * valleyNoise.GetNormalNoise((chunkX * 32) + x, (chunkZ * 32) + z);
+                    double noise = valleyNoise.GetNoise((chunkX * 32) + x, (chunkZ * 32) + z);
+
+                    // .25 weighting towards valleys.
+                    noise += 0.25;
+
+                    // Expands twice as fast.
+                    noise *= 2;
+
+                    noise = Math.Clamp(noise, 0, 1);
+
+                    valleyArray[(z * 32) + x] = maxValleyWidth * noise;
+
                     maxWidth = Math.Max(maxWidth, valleyArray[(z * 32) + x]);
                 }
             }
@@ -468,9 +510,7 @@ public class NewGenTerra : ModStdWorldGen
         ushort[] riverDistance = new ushort[32 * 32];
         bool riverBank = false;
 
-        // RIVER DATA ----------
-
-        Parallel.For(0, chunkSize * chunkSize, new ParallelOptions() { MaxDegreeOfParallelism = maxThreads }, chunkIndex2d => 
+        Parallel.For(0, chunkSize * chunkSize, new ParallelOptions() { MaxDegreeOfParallelism = maxThreads }, chunkIndex2d =>
         {
             int localX = chunkIndex2d % chunkSize;
             int localZ = chunkIndex2d / chunkSize;
@@ -478,7 +518,7 @@ public class NewGenTerra : ModStdWorldGen
             int worldX = (chunkX * chunkSize) + localX;
             int worldZ = (chunkZ * chunkSize) + localZ;
 
-            // INITIAL RIVER CALCULATION ----------
+            // RIVERSTUFF.
 
             // Sample river.
             samples[localX, localZ] = riverGenerator.SampleRiver(validArray, localStart.X + localX, localStart.Y + localZ);
@@ -494,32 +534,19 @@ public class NewGenTerra : ModStdWorldGen
             // Log river distance in chunk data.
             riverDistance[chunkIndex2d] = (ushort)samples[localX, localZ].riverDistance;
 
-            // Maximum height the point at this valley can be.
-            int yMaximum;
             double valleyMax = valleyArray[(localZ * 32) + localX];
 
-            if (riverDistance[chunkIndex2d] < valleyMax)
-            {
-                if (valleyMax < 0) valleyMax = 0;
+            float riverLerp = 1;
 
-                if (valleyMax == 0)
+            // 1 - edge of valley, 0 - edge of river.
+            if (samples[localX, localZ].riverDistance < valleyMax)
+            {
+                if (valleyMax > 0)
                 {
-                    yMaximum = mapSizeY;
-                }
-                else
-                {
-                    // Added new breakup noise here.
-                    double riverLerp = Math.Clamp(RiverMath.InverseLerp(samples[localX, localZ].riverDistance, 0, valleyMax), 0, 1);
+                    riverLerp = (float)Math.Clamp(RiverMath.InverseLerp(samples[localX, localZ].riverDistance, 0, valleyMax), 0.05, 1);
                     riverLerp *= riverLerp;
-                    yMaximum = (int)(riverFloorBase + (riverFloorVariation * floorNoise.GetPosNoise(worldX, worldZ)) + (aboveSeaLevel * riverLerp));
                 }
             }
-            else
-            {
-                yMaximum = mapSizeY;
-            }
-
-            // INITIAL RIVER CALCULATION ----------
 
             BitArray columnBlockSolidities = columnResults[chunkIndex2d].ColumnBlockSolidities;
             columnBlockSolidities.SetAll(false);
@@ -529,10 +556,34 @@ public class NewGenTerra : ModStdWorldGen
 
             float[] columnLandformIndexedWeights = tempDataThreadLocal.Value.landformWeights;
             landLerpMap.WeightsAt(baseX + (localX * chunkPixelBlockStep), baseZ + (localZ * chunkPixelBlockStep), columnLandformIndexedWeights);
+
+            // Weight landform to river.
+            if (riverLerp < 1)
+            {
+                // Multiply by river value.
+                for (int i = 0; i < columnLandformIndexedWeights.Length; i++)
+                {
+                    columnLandformIndexedWeights[i] *= riverLerp;
+                }
+
+                // Multiply river landform by inverse.
+                columnLandformIndexedWeights[riverIndex] += 1 - riverLerp;
+            }
+
             for (int i = 0; i < lerpedAmps.Length; i++)
             {
                 lerpedAmps[i] = GameMath.BiLerp(octNoiseX0[i], octNoiseX1[i], octNoiseX2[i], octNoiseX3[i], localX * chunkBlockDelta, localZ * chunkBlockDelta);
                 lerpedThresh[i] = GameMath.BiLerp(octThX0[i], octThX1[i], octThX2[i], octThX3[i], localX * chunkBlockDelta, localZ * chunkBlockDelta);
+
+                // Weight octaves to river.
+                if (riverLerp < 1)
+                {
+                    lerpedAmps[i] *= riverLerp;
+                    lerpedThresh[i] *= riverLerp;
+
+                    lerpedAmps[i] += riverVariant.TerrainOctaves[i] * (1 - riverLerp);
+                    lerpedThresh[i] += riverVariant.TerrainOctaveThresholds[i] * (1 - riverLerp);
+                }
             }
 
             // Create the directional compression effect.
@@ -541,6 +592,9 @@ public class NewGenTerra : ModStdWorldGen
 
             // Get Y distortion from oceanicity and upheaval.
             float upheavalStrength = GameMath.BiLerp(upheavalMapUpLeft, upheavalMapUpRight, upheavalMapBotLeft, upheavalMapBotRight, localX * chunkBlockDelta, localZ * chunkBlockDelta);
+
+            // Weight upheaval to river.
+            upheavalStrength *= riverLerp;
 
             float oceanicity = GameMath.BiLerp(oceanUpLeft, oceanUpRight, oceanBotLeft, oceanBotRight, localX * chunkBlockDelta, localZ * chunkBlockDelta) * oceanicityFac;
             VectorXZ distGeo = ApplyIsotropicDistortionThreshold(dist * geoDistortionMultiplier, geoDistortionThreshold, geoDistortionMultiplier * maxDistortionAmount);
@@ -592,16 +646,6 @@ public class NewGenTerra : ModStdWorldGen
                     threshold = GameMath.Lerp(threshold, th + noise, wTaper.Weight);
                 }
 
-                // RIVER CHECK ----------
-
-                // If the y is above the maximum for a river skip out.
-                if (posY > yMaximum)
-                {
-                    layerFullySolid[posY] = false;
-                    for (int yAbove = posY + 1; yAbove <= mapSizeYm2; yAbove++) layerFullySolid[yAbove] = false;
-                    break;
-                }
-
                 // Often we don't need to calculate the noise.
                 if (threshold <= noiseBoundMin)
                 {
@@ -633,8 +677,9 @@ public class NewGenTerra : ModStdWorldGen
                 }
             }
 
+            // RIVERSTUFF.
             // Don't do this optimization where rivers exist.
-            if (samples[localX, localZ].riverDistance <= 0)
+            if (samples[localX, localZ].riverDistance <= 1)
             {
                 for (int posY = 1; posY <= mapSizeYm2; posY++)
                 {
@@ -669,7 +714,7 @@ public class NewGenTerra : ModStdWorldGen
         int surfaceWaterId = 0;
 
         // yTop never more than (mapSizeY - 1), but leave the top block layer on the map always as air / for grass.
-        int yTop = mapSizeY - 2;  
+        int yTop = mapSizeY - 2;
 
         while (yTop >= yBase && layerFullyEmpty[yTop]) yTop--; // Decrease yTop, we don't need to generate anything for fully empty (air layers).
         if (yTop < seaLevel) yTop = seaLevel;
@@ -699,9 +744,10 @@ public class NewGenTerra : ModStdWorldGen
 
                 chunkBlockData = chunks[yBase / chunkSize].Data;
 
-                // RIVER DATA ----------
+                // RIVERSTUFF.
                 RiverSample sample = samples[localX, localZ];
 
+                // Carver.
                 if (sample.riverDistance <= 0)
                 {
                     int bankFactorBlocks = (int)(sample.bankFactor * aboveSeaLevel);
@@ -781,7 +827,7 @@ public class NewGenTerra : ModStdWorldGen
             }
         }
 
-        // SET RIVER DATA ----------
+        // RIVERSTUFF.
         if (riverBank)
         {
             chunks[0].SetModdata("flowVectors", flowVectors);
