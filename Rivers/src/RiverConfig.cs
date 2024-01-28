@@ -47,11 +47,11 @@
     public double segmentOffset = 50;
 
     // Base and depth based on the square root of the river size.
-    public double baseDepth = 0.1;
-    public double riverDepth = 0.025;
+    public double baseDepth = 0.07;
+    public double riverDepth = 0.02;
 
     // How much the ellipsoid carving the river should start above sea level and how big the top is in relation.
-    public int heightBoost = 7;
+    public int heightBoost = 4;
     public float topFactor = 1;
 
     // Values relating to distortion of rivers.
@@ -69,7 +69,7 @@
 
     // Base valley height and the maximum amount to add to it.
     public int riverFloorBase = -1;
-    public double riverFloorVariation = 3;
+    public double riverFloorVariation = 4;
 
     // How many blocks of submerged land, relative to default height, a spot is considered an ocean at.
     public float oceanThreshold = 30;

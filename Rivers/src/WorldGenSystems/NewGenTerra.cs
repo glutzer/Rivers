@@ -29,8 +29,10 @@ public class NewGenTerra : ModStdWorldGen
     public int baseSeaLevel;
     public int heightBoost;
     public float topFactor;
+
     public Noise valleyNoise = new(0, 0.0008f, 2);
     public Noise floorNoise = new(0, 0.0008f, 1);
+
     public double maxValleyWidth;
     public int riverFloorBase;
     public double riverFloorVariation;
@@ -424,11 +426,11 @@ public class NewGenTerra : ModStdWorldGen
 
             foreach (RiverNode node in river.nodes)
             {
-                if (RiverMath.DistanceToLine(localStart, node.startPos, node.endPos) < maxValleyWidth) // Consider a river of 100 size, 100 distortion.
+                if (RiverMath.DistanceToLine(localStart, node.startPos, node.endPos) < maxValleyWidth + 128) // Consider a river of 100 size, 100 distortion.
                 {
                     foreach (RiverSegment segment in node.segments)
                     {
-                        if (RiverMath.DistanceToLine(localStart, segment.startPos, segment.endPos) < maxValleyWidth + segment.riverNode.startSize + 512)
+                        if (RiverMath.DistanceToLine(localStart, segment.startPos, segment.endPos) < maxValleyWidth + segment.riverNode.startSize + 128)
                         {
                             validSegments.Add(segment); // Later check for duplicates. If the distance to another segment is too great it shouldn't have to be here.
                         }
@@ -506,7 +508,8 @@ public class NewGenTerra : ModStdWorldGen
                 }
                 else
                 {
-                    double riverLerp = Math.Clamp(RiverMath.InverseLerp(samples[localX, localZ].riverDistance + 1, 0, valleyMax), 0, 1);
+                    // Added new breakup noise here.
+                    double riverLerp = Math.Clamp(RiverMath.InverseLerp(samples[localX, localZ].riverDistance, 0, valleyMax), 0, 1);
                     riverLerp *= riverLerp;
                     yMaximum = (int)(riverFloorBase + (riverFloorVariation * floorNoise.GetPosNoise(worldX, worldZ)) + (aboveSeaLevel * riverLerp));
                 }
