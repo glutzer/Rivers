@@ -70,6 +70,7 @@
   <None Remove="assets\waterwheels\config\optional\clay\alluvialblock.json" />
   <None Remove="assets\waterwheels\itemtypes\riversofblood.json" />
   <None Remove="assets\waterwheels\lang\ja.json" />
+  <None Remove="assets\waterwheels\lang\uk.json" />
   <None Remove="assets\waterwheels\patches\landformpatch.json" />
   <None Remove="assets\waterwheels\recipes\grid\waterwheels.json" />
   <None Remove="assets\waterwheels\shapes\block\brownclay.json" />

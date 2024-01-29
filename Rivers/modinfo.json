@@ -6,7 +6,7 @@
         "sneezerstein"
     ],
     "description": "Standalone version of rivers and waterwheels.",
-    "version": "1.69.0",
+    "version": "2.2.0",
     "dependencies": {
         "game": ""
     }

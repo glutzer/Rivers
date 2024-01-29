@@ -326,9 +326,10 @@ public class NewGenTerra : ModStdWorldGen
 
                     riverLandform.TerrainYKeyPositions[0] = seaLevelThreshold + (blockThreshold * 1);
                     riverLandform.TerrainYKeyPositions[1] = seaLevelThreshold + (blockThreshold * 2);
-                    riverLandform.TerrainYKeyPositions[2] = seaLevelThreshold + (blockThreshold * 3);
+                    riverLandform.TerrainYKeyPositions[2] = seaLevelThreshold + (blockThreshold * 3); // 3 - 4 - 6 originally
                     riverLandform.TerrainYKeyPositions[3] = seaLevelThreshold + (blockThreshold * 4);
-                    riverLandform.TerrainYKeyPositions[3] = seaLevelThreshold + (blockThreshold * 6);
+                    riverLandform.TerrainYKeyPositions[4] = seaLevelThreshold + (blockThreshold * 6);
+                    riverLandform.TerrainYKeyPositions[5] = seaLevelThreshold + (blockThreshold * 8); // 0.
 
                     // Re-lerp with adjusted heights.
                     riverLandform.CallMethod("LerpThresholds", sapi.WorldManager.MapSizeY);
@@ -472,38 +473,11 @@ public class NewGenTerra : ModStdWorldGen
 
         localStart -= 16;
 
-        double maxWidth = 0;
-
-        double[] valleyArray = new double[32 * 32];
-
-        if (validSegments.Count > 0)
-        {
-            for (int x = 0; x < 32; x++)
-            {
-                for (int z = 0; z < 32; z++)
-                {
-                    double noise = valleyNoise.GetNoise((chunkX * 32) + x, (chunkZ * 32) + z);
-
-                    // .25 weighting towards valleys.
-                    noise += 0.25;
-
-                    // Expands twice as fast.
-                    noise *= 2;
-
-                    noise = Math.Clamp(noise, 0, 1);
-
-                    valleyArray[(z * 32) + x] = maxValleyWidth * noise;
-
-                    maxWidth = Math.Max(maxWidth, valleyArray[(z * 32) + x]);
-                }
-            }
-        }
-
         List<RiverSegment> valid = new();
-        riverGenerator.ValidateSegments(validSegments.ToArray(), maxWidth, localStart.X, localStart.Y, valid);
-        riverGenerator.ValidateSegments(validSegments.ToArray(), maxWidth, localStart.X + 31, localStart.Y, valid);
-        riverGenerator.ValidateSegments(validSegments.ToArray(), maxWidth, localStart.X, localStart.Y + 31, valid);
-        riverGenerator.ValidateSegments(validSegments.ToArray(), maxWidth, localStart.X + 31, localStart.Y + 31, valid);
+        riverGenerator.ValidateSegments(validSegments.ToArray(), maxValleyWidth, localStart.X, localStart.Y, valid);
+        riverGenerator.ValidateSegments(validSegments.ToArray(), maxValleyWidth, localStart.X + 31, localStart.Y, valid);
+        riverGenerator.ValidateSegments(validSegments.ToArray(), maxValleyWidth, localStart.X, localStart.Y + 31, valid);
+        riverGenerator.ValidateSegments(validSegments.ToArray(), maxValleyWidth, localStart.X + 31, localStart.Y + 31, valid);
         RiverSegment[] validArray = valid.ToArray();
 
         float[] flowVectors = new float[32 * 32 * 2];
@@ -523,27 +497,46 @@ public class NewGenTerra : ModStdWorldGen
             // Sample river.
             samples[localX, localZ] = riverGenerator.SampleRiver(validArray, localStart.X + localX, localStart.Y + localZ);
 
+            RiverSample sample = samples[localX, localZ];
+
             // Determine if water is flowing there and add it.
-            if (samples[localX, localZ].flowVectorX > -100)
+            if (sample.flowVectorX > -100)
             {
-                flowVectors[chunkIndex2d] = samples[localX, localZ].flowVectorX;
-                flowVectors[chunkIndex2d + 1024] = samples[localX, localZ].flowVectorZ;
+                flowVectors[chunkIndex2d] = sample.flowVectorX;
+                flowVectors[chunkIndex2d + 1024] = sample.flowVectorZ;
                 riverBank = true;
             }
 
             // Log river distance in chunk data.
-            riverDistance[chunkIndex2d] = (ushort)samples[localX, localZ].riverDistance;
-
-            double valleyMax = valleyArray[(localZ * 32) + localX];
+            riverDistance[chunkIndex2d] = (ushort)sample.riverDistance;
 
             float riverLerp = 1;
 
             // 1 - edge of valley, 0 - edge of river.
-            if (samples[localX, localZ].riverDistance < valleyMax)
+            if (sample.riverDistance < 50)
             {
-                if (valleyMax > 0)
+                // Get raw perlin noise.
+                double valley = valleyNoise.GetNoise(worldX, worldZ);
+
+                // *2 gain for faster transitions.
+                valley = Math.Clamp(valley * 2, -1, 1);
+
+                // Convert to positive number.
+                valley += 1;
+                valley /= 2;
+
+                // Before this was -1 to 3? This should be correct weighting.
+
+                // Clamp to bounds.
+                if (valley < 0.02) valley = 0.02;
+
+                if (valley < 1)
                 {
-                    riverLerp = (float)Math.Clamp(RiverMath.InverseLerp(samples[localX, localZ].riverDistance, 0, valleyMax), 0.05, 1);
+                    //riverLerp = (float)Math.Clamp(RiverMath.InverseLerp(samples[localX, localZ].riverDistance, 0, maxValleyWidth), valley, 1);
+
+                    // Smooth lerp instead.
+                    riverLerp = (float)GameMath.Lerp(valley, 1, RiverMath.InverseLerp(samples[localX, localZ].riverDistance, 0, maxValleyWidth));
+
                     riverLerp *= riverLerp;
                 }
             }
@@ -679,7 +672,7 @@ public class NewGenTerra : ModStdWorldGen
 
             // RIVERSTUFF.
             // Don't do this optimization where rivers exist.
-            if (samples[localX, localZ].riverDistance <= 1)
+            if (sample.riverDistance <= 1)
             {
                 for (int posY = 1; posY <= mapSizeYm2; posY++)
                 {
