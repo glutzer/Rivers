@@ -88,7 +88,7 @@ public class InitialClay : ModStdWorldGen
 
     public override void StartServerSide(ICoreServerAPI api)
     {
-        if (TerraGenConfig.DoDecorationPass)
+        if (TerraGenConfig.DoDecorationPass && RiverConfig.Loaded.riverDeposits)
         {
             sapi = api;
             api.Event.ChunkColumnGeneration(ChunkColumnGeneration, EnumWorldGenPass.Vegetation, "standard");

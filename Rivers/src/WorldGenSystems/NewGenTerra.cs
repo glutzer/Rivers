@@ -324,12 +324,10 @@ public class NewGenTerra : ModStdWorldGen
 
                     float blockThreshold = 0.4313725490196078f / 110 * modifier;
 
-                    riverLandform.TerrainYKeyPositions[0] = seaLevelThreshold + (blockThreshold * 1);
-                    riverLandform.TerrainYKeyPositions[1] = seaLevelThreshold + (blockThreshold * 2);
-                    riverLandform.TerrainYKeyPositions[2] = seaLevelThreshold + (blockThreshold * 3); // 3 - 4 - 6 originally
-                    riverLandform.TerrainYKeyPositions[3] = seaLevelThreshold + (blockThreshold * 4);
-                    riverLandform.TerrainYKeyPositions[4] = seaLevelThreshold + (blockThreshold * 6);
-                    riverLandform.TerrainYKeyPositions[5] = seaLevelThreshold + (blockThreshold * 8); // 0.
+                    riverLandform.TerrainYKeyPositions[0] = seaLevelThreshold; // 100% chance to be atleast sea level.
+                    riverLandform.TerrainYKeyPositions[1] = seaLevelThreshold + (blockThreshold * 4); // 50% chance to be atleast 4 blocks above sea level.
+                    riverLandform.TerrainYKeyPositions[2] = seaLevelThreshold + (blockThreshold * 6); // 25% chance to be atleast 6 blocks above sea level.
+                    riverLandform.TerrainYKeyPositions[3] = seaLevelThreshold + (blockThreshold * 12); // 0% chance to be astleast 10 blocks above sea level.
 
                     // Re-lerp with adjusted heights.
                     riverLandform.CallMethod("LerpThresholds", sapi.WorldManager.MapSizeY);
@@ -513,7 +511,7 @@ public class NewGenTerra : ModStdWorldGen
             float riverLerp = 1;
 
             // 1 - edge of valley, 0 - edge of river.
-            if (sample.riverDistance < 50)
+            if (sample.riverDistance < maxValleyWidth)
             {
                 // Get raw perlin noise.
                 double valley = valleyNoise.GetNoise(worldX, worldZ);
