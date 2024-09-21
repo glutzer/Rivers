@@ -42,7 +42,7 @@ public class SeaPatch
 
     // Checks for both water and saltwater.
     [HarmonyPatch(typeof(BlockSeaweed))]
-    [HarmonyPatch("TryPlaceBlockForWorldGen")]
+    [HarmonyPatch("TryPlaceBlockForWorldGenUnderwater")]
     public static class SeaweedPrefix
     {
         [HarmonyPrefix]
@@ -147,7 +147,7 @@ public class SeaPatch
                 return false;
             }
 
-            int rainFall = TerraGenConfig.GetRainFall((climate >> 8) & 0xFF, y);
+            int rainFall = Climate.GetRainFall((climate >> 8) & 0xFF, y);
             float rainNormal = rainFall / 255f;
             if (rainNormal < patch.MinRain || rainNormal > patch.MaxRain)
             {
@@ -155,7 +155,7 @@ public class SeaPatch
                 return false;
             }
 
-            int scaledAdjustedTemperature = TerraGenConfig.GetScaledAdjustedTemperature((climate >> 16) & 0xFF, y - TerraGenConfig.seaLevel);
+            int scaledAdjustedTemperature = Climate.GetScaledAdjustedTemperature((climate >> 16) & 0xFF, y - TerraGenConfig.seaLevel);
             if (scaledAdjustedTemperature < patch.MinTemp || scaledAdjustedTemperature > patch.MaxTemp)
             {
                 __result = false;
@@ -169,7 +169,7 @@ public class SeaPatch
                 return false;
             }
 
-            float fertilityNormal = TerraGenConfig.GetFertility(rainFall, scaledAdjustedTemperature, seaLevelNormal) / 255f;
+            float fertilityNormal = Climate.GetFertility(rainFall, scaledAdjustedTemperature, seaLevelNormal) / 255f;
             if (fertilityNormal >= patch.MinFertility)
             {
                 __result = fertilityNormal <= patch.MaxFertility;
