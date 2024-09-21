@@ -57,6 +57,7 @@ public class GravelGen : ModStdWorldGen
 
             gravelMappings.Add(stratumId, gravelId);
         }
+        gravelMappings.Add(0, 0);
 
         baseSeaLevel = TerraGenConfig.seaLevel - 1;
     }

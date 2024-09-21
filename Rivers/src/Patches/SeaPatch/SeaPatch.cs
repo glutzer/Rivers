@@ -46,8 +46,9 @@ public class SeaPatch
     public static class SeaweedPrefix
     {
         [HarmonyPrefix]
-        public static bool Prefix(BlockSeaweed __instance, ref bool __result, IBlockAccessor blockAccessor, BlockPos pos)
+        public static bool Prefix(BlockSeaweed __instance, ref bool __result, IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldGenRand, int minWaterDepth, int maxWaterDepth, BlockPatchAttributes attributes = null)
         {
+            NatFloat heightNatFloat = attributes?.Height ?? NatFloat.createGauss(3f, 3f);
             BlockPos blockPos = pos.DownCopy();
             Block block = blockAccessor.GetBlock(blockPos, 2);
             if (block.LiquidCode != "water" && block.LiquidCode != "saltwater")
@@ -65,7 +66,7 @@ public class SeaPatch
 
                 if (block.Fertility > 0)
                 {
-                    __instance.CallMethod("PlaceSeaweed", blockAccessor, blockPos, i);
+                    __instance.CallMethod("PlaceSeaweed", blockAccessor, blockPos, i, worldGenRand, heightNatFloat);
 
                     __result = true;
                     return false;
@@ -88,14 +89,13 @@ public class SeaPatch
     public static class PlaceSeaweedPrefix
     {
         [HarmonyPrefix]
-        public static bool Prefix(BlockSeaweed __instance, IBlockAccessor blockAccessor, BlockPos pos, int depth)
+        public static bool Prefix(BlockSeaweed __instance, IBlockAccessor blockAccessor, BlockPos pos, int depth, IRandom random, NatFloat heightNatFloat)
         {
-            Random random = __instance.GetField<Random>("random");
             Block[] blocks = __instance.GetField<Block[]>("blocks");
 
             // 20 instead of 6.
             depth = (int)Math.Min(depth, 40 * Multiplier);
-            int toPlace = Math.Min(depth - 1, 1 + random.Next(depth));
+            int toPlace = Math.Min(depth - 1, 1 + random.NextInt(depth));
 
             if (blocks == null)
             {
@@ -115,7 +115,14 @@ public class SeaPatch
             }
 
             pos.Up();
-            blockAccessor.SetBlock(blocks[1].BlockId, pos);
+            if (blocks[1] == null)
+            {
+                blockAccessor.SetBlock(blocks[0].BlockId, pos);
+            }
+            else
+            {
+                blockAccessor.SetBlock(blocks[1].BlockId, pos);
+            }
 
             return false;
         }
